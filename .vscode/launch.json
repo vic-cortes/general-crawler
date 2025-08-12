@@ -1,0 +1,50 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "[PROJECT] Web Scraper",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/project/main.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "python": "${workspaceFolder}/project/.venv/bin/python",
+      "cwd": "${workspaceFolder}/project",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/project"
+      }
+    },
+    {
+      "name": "[PROJECT] Craw4ai",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/project/src/scraper/crawl4ai_testing.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "python": "${workspaceFolder}/project/.venv/bin/python",
+      "cwd": "${workspaceFolder}/project",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/project"
+      }
+    },
+    {
+      "name": "[PROJECT] FastAPI",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "project.src.api.server:app",
+        "--reload",
+        "--port",
+        "8000",
+        "--host",
+        "0.0.0.0"
+      ],
+      "jinja": true,
+      "justMyCode": true,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    }
+  ]
+}
