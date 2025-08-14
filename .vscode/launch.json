@@ -28,6 +28,19 @@
       }
     },
     {
+      "name": "[PROJECT] Computrabajo",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/job/compu_trabajo.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    },
+    {
       "name": "[PROJECT] FastAPI",
       "type": "debugpy",
       "request": "launch",
