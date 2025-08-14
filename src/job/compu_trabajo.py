@@ -3,6 +3,7 @@ import json
 
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
 from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
+from crawl4ai.models import CrawlResultContainer
 
 from src.config import browser_config
 
@@ -37,11 +38,28 @@ async def main():
         ],
     }
 
+    DETAIL_KEY_CSS_SELECTOR = "div:nth-child(1) > div.fs14.mb10"
+
+    output_description_schema = {
+        "name": "Computrabajo Job Description",
+        "baseSelector": "div.box_detail",
+        "fields": [
+            {
+                "name": "salary",
+                "selector": DETAIL_KEY_CSS_SELECTOR,
+                "type": "text",
+            },
+        ],
+    }
+
+    SESSION_ID = "job_listings_session"
+
     strategy = JsonCssExtractionStrategy(output_schema)
+    strategy_description = JsonCssExtractionStrategy(output_description_schema)
     crawler_config = CrawlerRunConfig(
         extraction_strategy=strategy,
         wait_for=KEY_CSS_SELECTOR,
-        # cache_mode=CacheMode.BYPASS,
+        session_id=SESSION_ID,  # Keep session for job listings
     )
 
     # Create an instance of AsyncWebCrawler
@@ -56,17 +74,17 @@ async def main():
         # Save the result to a JSON file
         offers = json.loads(result.extracted_content)
 
-        session_id = "job_details_session"
-
         for idx, _ in enumerate(offers):
-            js = [f"document.querySelectorAll('article.box_offer')[{idx}].click();"]
+            js = f"document.querySelectorAll('article.box_offer')[{idx}].click();"
+
             config_click = CrawlerRunConfig(
                 js_code=js,
-                # wait_for="div.fs16.t_word_wrap",
-                js_only=True,
-                session_id=session_id,
+                wait_for=KEY_CSS_SELECTOR,
+                # js_only=True,
+                session_id=SESSION_ID,
                 cache_mode=CacheMode.BYPASS,
-                extraction_strategy=strategy,
+                extraction_strategy=strategy_description,
+                wait_for_timeout=5_000,
             )
             result_detail = await crawler.arun(url=JOB_URL, config=config_click)
             if result_detail.success:

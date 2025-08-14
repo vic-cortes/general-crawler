@@ -4,13 +4,13 @@ from crawl4ai import BrowserConfig
 
 
 class BrowserType(Enum):
-    CHROME = "chrome"
+    CHROMIUM = "chromium"
     FIREFOX = "firefox"
     EDGE = "edge"
 
 
 browser_config = BrowserConfig(
-    browser_type=BrowserType.FIREFOX.value,
-    headless=True,
+    browser_type=BrowserType.CHROMIUM.value,
+    headless=False,
     verbose=True,
 )
