@@ -9,4 +9,8 @@ class BrowserType(Enum):
     EDGE = "edge"
 
 
-browser_config = BrowserConfig(browser_type=BrowserType.FIREFOX.value, headless=False)
+browser_config = BrowserConfig(
+    browser_type=BrowserType.FIREFOX.value,
+    headless=True,
+    verbose=True,
+)
