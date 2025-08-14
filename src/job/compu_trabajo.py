@@ -38,15 +38,15 @@ async def main():
         ],
     }
 
-    DETAIL_KEY_CSS_SELECTOR = "div:nth-child(1) > div.fs14.mb10"
+    DETAIL_KEY_CSS_SELECTOR = "div:nth-child(1) > div.fs14.mb10 p"
 
     output_description_schema = {
         "name": "Computrabajo Job Description",
         "baseSelector": "div.box_detail",
         "fields": [
             {
-                "name": "salary",
-                "selector": DETAIL_KEY_CSS_SELECTOR,
+                "name": "text",
+                "selector": "self",
                 "type": "text",
             },
         ],
