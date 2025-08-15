@@ -1,9 +1,9 @@
 import asyncio
 import json
 
+from bs4 import BeautifulSoup
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
 from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
-from crawl4ai.models import CrawlResultContainer
 
 from src.config import browser_config
 
@@ -38,11 +38,9 @@ async def main():
         ],
     }
 
-    DETAIL_KEY_CSS_SELECTOR = "div:nth-child(1) > div.fs14.mb10 p"
-
     output_description_schema = {
         "name": "Computrabajo Job Description",
-        "baseSelector": "div.box_detail",
+        "baseSelector": "div.mbB p",
         "fields": [
             {
                 "name": "text",
@@ -79,7 +77,7 @@ async def main():
 
             config_click = CrawlerRunConfig(
                 js_code=js,
-                wait_for=KEY_CSS_SELECTOR,
+                wait_for="div.box_detail",
                 # js_only=True,
                 session_id=SESSION_ID,
                 cache_mode=CacheMode.BYPASS,
@@ -87,9 +85,34 @@ async def main():
                 wait_for_timeout=5_000,
             )
             result_detail = await crawler.arun(url=JOB_URL, config=config_click)
+
+            key_icons = {
+                "i_clock": "time",
+                "i_find": "location",
+                "i_company": "place",
+                "i_money": "salary",
+                "i_home": "place",
+            }
+
             if result_detail.success:
-                detail = json.loads(result_detail.extracted_content)[idx]
-                print("Detalle:", detail.get("description"))
+                soup = BeautifulSoup(result_detail.html, "html.parser")
+                all_ps = (
+                    soup.find("div", class_="box_detail")
+                    .find("div", class_="fs14")
+                    .find_all("p")
+                )
+
+                dict_data = {}
+
+                for p in all_ps:
+                    span_class = "__".join(p.find("span").attrs.get("class"))
+                    text = p.text.strip()
+                    for icon_class, key in key_icons.items():
+                        if icon_class in span_class:
+                            dict_data[key] = text
+                            break
+
+                offers[idx]["details"] = dict_data
 
         # for element in dict_data:
         #     element["details_url"] = f"{BASE_URL}{element['details_url']}"
