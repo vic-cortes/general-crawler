@@ -1,5 +1,6 @@
 import asyncio
 import json
+import random
 
 from bs4 import BeautifulSoup
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
@@ -9,51 +10,69 @@ from src.config import browser_config
 
 BASE_URL = "https://mx.computrabajo.com"
 JOB_URL = f"{BASE_URL}/trabajo-de-python"
+KEY_CSS_SELECTOR = "#offersGridOfferContainer"
+DETAIL_CSS_SELECTOR = "div.box_detail"
+DETAIL_ICONS = {
+    "i_clock": "time",
+    "i_find": "location",
+    "i_company": "place",
+    "i_money": "salary",
+    "i_home": "place",
+}
+
+output_schema = {
+    "name": "Computrabajo Job Scraper",
+    "baseSelector": "article.box_offer",
+    "fields": [
+        {"name": "title", "selector": "a.js-o-link", "type": "text"},
+        {"name": "company", "selector": "p.dFlex", "type": "text"},
+        {
+            "name": "location",
+            "selector": "p:nth-child(3)",
+            "type": "text",
+        },
+        {
+            "name": "relative_date",
+            "selector": "p.fs13.fc_aux.mt15",
+            "type": "text",
+        },
+        {
+            "name": "description",
+            "selector": "div.fs16.t_word_wrap",
+            "type": "text",
+        },
+    ],
+}
+
+
+def get_job_details(soup: BeautifulSoup) -> dict:
+    """
+    Extract job details from the job description page.
+    """
+    box_detail = soup.find("div", class_="box_detail")
+    all_ps = box_detail.find("div", class_="fs14").find_all("p")
+
+    dict_data = {}
+
+    for p in all_ps:
+        span_class = "__".join(p.find("span").attrs.get("class"))
+        text = p.text.strip()
+
+        for icon_class, key in DETAIL_ICONS.items():
+            if icon_class in span_class:
+                dict_data[key] = text
+                break
+
+    return dict_data
 
 
 async def main():
-    KEY_CSS_SELECTOR = "#offersGridOfferContainer"
-
-    output_schema = {
-        "name": "Computrabajo Job Scraper",
-        "baseSelector": "article.box_offer",
-        "fields": [
-            {"name": "title", "selector": "a.js-o-link", "type": "text"},
-            {"name": "company", "selector": "p.dFlex", "type": "text"},
-            {
-                "name": "location",
-                "selector": "p:nth-child(3)",
-                "type": "text",
-            },
-            {
-                "name": "relative_date",
-                "selector": "p.fs13.fc_aux.mt15",
-                "type": "text",
-            },
-            {
-                "name": "description",
-                "selector": "div.fs16.t_word_wrap",
-                "type": "text",
-            },
-        ],
-    }
-
-    output_description_schema = {
-        "name": "Computrabajo Job Description",
-        "baseSelector": "div.mbB p",
-        "fields": [
-            {
-                "name": "text",
-                "selector": "self",
-                "type": "text",
-            },
-        ],
-    }
-
-    SESSION_ID = "job_listings_session"
+    # random number
+    random_number = random.randint(1000, 9999)
+    SESSION_ID = f"job_listings_session_{random_number}"
 
     strategy = JsonCssExtractionStrategy(output_schema)
-    strategy_description = JsonCssExtractionStrategy(output_description_schema)
+
     crawler_config = CrawlerRunConfig(
         extraction_strategy=strategy,
         wait_for=KEY_CSS_SELECTOR,
@@ -77,49 +96,20 @@ async def main():
 
             config_click = CrawlerRunConfig(
                 js_code=js,
-                wait_for="div.box_detail",
-                # js_only=True,
+                wait_for=DETAIL_CSS_SELECTOR,
                 session_id=SESSION_ID,
-                cache_mode=CacheMode.BYPASS,
-                extraction_strategy=strategy_description,
+                cache_mode=CacheMode.ENABLED,
                 wait_for_timeout=5_000,
             )
             result_detail = await crawler.arun(url=JOB_URL, config=config_click)
 
-            key_icons = {
-                "i_clock": "time",
-                "i_find": "location",
-                "i_company": "place",
-                "i_money": "salary",
-                "i_home": "place",
-            }
-
             if result_detail.success:
+                # We use bs4 because the complex structure of the job details
                 soup = BeautifulSoup(result_detail.html, "html.parser")
-                all_ps = (
-                    soup.find("div", class_="box_detail")
-                    .find("div", class_="fs14")
-                    .find_all("p")
-                )
-
-                dict_data = {}
-
-                for p in all_ps:
-                    span_class = "__".join(p.find("span").attrs.get("class"))
-                    text = p.text.strip()
-                    for icon_class, key in key_icons.items():
-                        if icon_class in span_class:
-                            dict_data[key] = text
-                            break
-
+                dict_data = get_job_details(soup)
                 offers[idx]["details"] = dict_data
 
-        # for element in dict_data:
-        #     element["details_url"] = f"{BASE_URL}{element['details_url']}"
-
-        # with open("liverpool_products.json", "w") as file:
-        #     json.dump(dict_data, file, indent=4)
-        # print("Data saved to liverpool_products.json")
+        print(offers)
 
 
 if __name__ == "__main__":
