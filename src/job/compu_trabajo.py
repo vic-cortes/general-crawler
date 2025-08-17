@@ -109,7 +109,7 @@ class MainPageSetup:
             ],
         }
 
-    def config_crawler(self):
+    def get_crawler_config(self):
         strategy = JsonCssExtractionStrategy(self._output_schema())
 
         return CrawlerRunConfig(
@@ -129,16 +129,47 @@ class Scraper(MainPageSetup):
         return f"{self.service_name}_scraper_{random.randint(1000, 9999)}"
 
     async def _get_overview(self) -> dict:
-        pass
+        result = await self.crawler.arun(
+            url=self.url,
+            config=self.get_crawler_config(),
+        )
 
-    async def _get_details(self) -> dict:
-        pass
+        if not result.success:
+            print("Error:", result.error_message)
+            return
+
+        return json.loads(result.extracted_content)
+
+    async def _get_details(self, idx: int, offer: dict) -> dict:
+        js = f"document.querySelectorAll('article.box_offer')[{idx}].click();"
+
+        config_click = CrawlerRunConfig(
+            js_code=js,
+            wait_for=DETAIL_CSS_SELECTOR,
+            session_id=self.session_id,
+            cache_mode=CacheMode.ENABLED,
+            wait_for_timeout=5_000,
+        )
+        result_detail = await self.crawler.arun(url=JOB_URL, config=config_click)
+
+        if result_detail.success:
+            # We use bs4 because the complex structure of the job details
+            soup = BeautifulSoup(result_detail.html, "html.parser")
+            dict_data = get_job_details(soup)
+            offer["details"] = dict_data
+
+        return offer
 
     async def _click_next_page(self) -> None:
         pass
 
     async def get_data(self):
-        pass
+        offers = await self._get_overview()
+
+        for idx, offer in enumerate(offers):
+            offers[idx] = await self._get_details(idx, offer)
+
+        return offers
 
 
 async def main():
