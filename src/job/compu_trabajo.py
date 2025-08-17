@@ -1,8 +1,10 @@
 import asyncio
 import json
 import random
+from dataclasses import dataclass
 
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
 from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
 
@@ -68,6 +70,54 @@ def get_job_details(soup: BeautifulSoup) -> dict:
                 break
 
     return dict_data
+
+
+class MainPageSetup:
+
+    def __init__(self):
+        self._base_selector = "article.box_offer"
+
+    @property
+    def service_name(self) -> str:
+        return "compu_trabajo"
+
+    @property
+    def session_id(self) -> str:
+        return f"{self.service_name}_scraper_{random.randint(1000, 9999)}"
+
+    def _output_schema(self):
+        return {
+            "name": self.service_name + " Job Scraper",
+            "baseSelector": self._base_selector,
+            "fields": [
+                {"name": "title", "selector": "a.js-o-link", "type": "text"},
+                {"name": "company", "selector": "p.dFlex", "type": "text"},
+                {
+                    "name": "location",
+                    "selector": "p:nth-child(3)",
+                    "type": "text",
+                },
+                {
+                    "name": "relative_date",
+                    "selector": "p.fs13.fc_aux.mt15",
+                    "type": "text",
+                },
+                {
+                    "name": "description",
+                    "selector": "div.fs16.t_word_wrap",
+                    "type": "text",
+                },
+            ],
+        }
+
+    def config_crawler(self):
+        strategy = JsonCssExtractionStrategy(self._output_schema())
+
+        return CrawlerRunConfig(
+            extraction_strategy=strategy,
+            wait_for=KEY_CSS_SELECTOR,
+            session_id=self.session_id,
+        )
 
 
 async def main():
