@@ -72,6 +72,9 @@ def get_job_details(soup: BeautifulSoup) -> dict:
     return dict_data
 
 
+BASE_SELECTOR = "article.box_offer"
+
+
 class MainPageSetup:
 
     def __init__(self):
@@ -81,14 +84,10 @@ class MainPageSetup:
     def service_name(self) -> str:
         return "compu_trabajo"
 
-    @property
-    def session_id(self) -> str:
-        return f"{self.service_name}_scraper_{random.randint(1000, 9999)}"
-
     def _output_schema(self):
         return {
             "name": self.service_name + " Job Scraper",
-            "baseSelector": self._base_selector,
+            "baseSelector": BASE_SELECTOR,
             "fields": [
                 {"name": "title", "selector": "a.js-o-link", "type": "text"},
                 {"name": "company", "selector": "p.dFlex", "type": "text"},
@@ -118,6 +117,28 @@ class MainPageSetup:
             wait_for=KEY_CSS_SELECTOR,
             session_id=self.session_id,
         )
+
+
+@dataclass
+class Scraper(MainPageSetup):
+    url: str
+    crawler: AsyncWebCrawler
+
+    @property
+    def session_id(self) -> str:
+        return f"{self.service_name}_scraper_{random.randint(1000, 9999)}"
+
+    async def _get_overview(self) -> dict:
+        pass
+
+    async def _get_details(self) -> dict:
+        pass
+
+    async def _click_next_page(self) -> None:
+        pass
+
+    async def get_data(self):
+        pass
 
 
 async def main():
