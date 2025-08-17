@@ -7,10 +7,12 @@ from bs4 import BeautifulSoup
 from bs4.element import Tag
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
 from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
+from crawl4ai.models import CrawlResultContainer
 
 from src.config import browser_config
 
 BASE_URL = "https://mx.computrabajo.com"
+ERROR_URL = "https://mx.computrabajo.com/trabajo-de-python?p=95"
 JOB_URL = f"{BASE_URL}/trabajo-de-python"
 KEY_CSS_SELECTOR = "#offersGridOfferContainer"
 DETAIL_CSS_SELECTOR = "div.box_detail"
@@ -81,6 +83,13 @@ class MainPageSetup:
         self._base_selector = "article.box_offer"
 
     @property
+    def session_id(self) -> str:
+        """
+        Generate a unique session ID for the scraper.
+        """
+        return None
+
+    @property
     def service_name(self) -> str:
         return "compu_trabajo"
 
@@ -109,13 +118,14 @@ class MainPageSetup:
             ],
         }
 
-    def get_crawler_config(self):
+    def _get_crawler_config(self):
         strategy = JsonCssExtractionStrategy(self._output_schema())
 
         return CrawlerRunConfig(
             extraction_strategy=strategy,
             wait_for=KEY_CSS_SELECTOR,
             session_id=self.session_id,
+            wait_for_timeout=2_000,
         )
 
 
@@ -128,19 +138,22 @@ class Scraper(MainPageSetup):
     def session_id(self) -> str:
         return f"{self.service_name}_scraper_{random.randint(1000, 9999)}"
 
-    async def _get_overview(self) -> dict:
+    async def _get_overview(self) -> dict | None:
         result = await self.crawler.arun(
             url=self.url,
-            config=self.get_crawler_config(),
+            config=self._get_crawler_config(),
         )
 
         if not result.success:
             print("Error:", result.error_message)
-            return
+            return False
 
         return json.loads(result.extracted_content)
 
     async def _get_details(self, idx: int, offer: dict) -> dict:
+        """
+        Retrieve details from the page
+        """
         js = f"document.querySelectorAll('article.box_offer')[{idx}].click();"
 
         config_click = CrawlerRunConfig(
@@ -155,21 +168,49 @@ class Scraper(MainPageSetup):
         if result_detail.success:
             # We use bs4 because the complex structure of the job details
             soup = BeautifulSoup(result_detail.html, "html.parser")
-            dict_data = get_job_details(soup)
-            offer["details"] = dict_data
+            offer["details"] = get_job_details(soup)
 
         return offer
 
-    async def _click_next_page(self) -> None:
-        pass
+    async def click_next_page(self) -> CrawlResultContainer:
+        """
+        Click the next page button
+        """
+        js_next = [
+            "console.log('dummy')",
+            "document.querySelector('span.b_primary.w48.buildLink.cp').click();",
+        ]
+
+        config_click_next = CrawlerRunConfig(
+            js_code=js_next,
+            js_only=True,
+            wait_for=DETAIL_CSS_SELECTOR,
+            session_id=self.session_id,
+            wait_for_timeout=5_000,
+        )
+        return await self.crawler.arun(url=JOB_URL, config=config_click_next)
 
     async def get_data(self):
-        offers = await self._get_overview()
+        """
+        Retrieve job data from the website.
+        """
+
+        if not (offers := await self._get_overview()):
+            return None
 
         for idx, offer in enumerate(offers):
             offers[idx] = await self._get_details(idx, offer)
 
         return offers
+
+
+async def dummy():
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        offers = {}
+        scraper = Scraper(url=JOB_URL, crawler=crawler)
+
+        while offers is not None:
+            offers = await scraper.get_data()
 
 
 async def main():
@@ -183,12 +224,13 @@ async def main():
         extraction_strategy=strategy,
         wait_for=KEY_CSS_SELECTOR,
         session_id=SESSION_ID,  # Keep session for job listings
+        wait_for_timeout=5_000,
     )
 
     # Create an instance of AsyncWebCrawler
     async with AsyncWebCrawler(config=browser_config) as crawler:
         # Run the crawler on a URL
-        result = await crawler.arun(url=JOB_URL, config=crawler_config)
+        result = await crawler.arun(url=ERROR_URL, config=crawler_config)
 
         if not result.success:
             print("Error:", result.error_message)
@@ -228,6 +270,7 @@ async def main():
             session_id=SESSION_ID,
             wait_for_timeout=5_000,
         )
+        result_detail = await crawler.arun(url=JOB_URL, config=config_click_next)
         result_detail = await crawler.arun(url=JOB_URL, config=config_click_next)
 
         print(offers)
