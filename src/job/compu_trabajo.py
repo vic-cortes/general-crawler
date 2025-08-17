@@ -51,8 +51,12 @@ def get_job_details(soup: BeautifulSoup) -> dict:
     """
     box_detail = soup.find("div", class_="box_detail")
     all_ps = box_detail.find("div", class_="fs14").find_all("p")
+    description = " ".join(
+        box_detail.find("div", class_="t_word_wrap").text.strip().split("\n")
+    )
+    requirements = box_detail.find("ul", class_="disc").text.strip()
 
-    dict_data = {}
+    dict_data = {"description": description, "requirements": requirements}
 
     for p in all_ps:
         span_class = "__".join(p.find("span").attrs.get("class"))
@@ -108,6 +112,21 @@ async def main():
                 soup = BeautifulSoup(result_detail.html, "html.parser")
                 dict_data = get_job_details(soup)
                 offers[idx]["details"] = dict_data
+
+        # Click next page
+        js_next = [
+            "console.log('dummy')",
+            "document.querySelector('span.b_primary.w48.buildLink.cp').click();",
+        ]
+
+        config_click_next = CrawlerRunConfig(
+            js_code=js_next,
+            js_only=True,
+            wait_for=DETAIL_CSS_SELECTOR,
+            session_id=SESSION_ID,
+            wait_for_timeout=5_000,
+        )
+        result_detail = await crawler.arun(url=JOB_URL, config=config_click_next)
 
         print(offers)
 
