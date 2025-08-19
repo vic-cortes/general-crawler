@@ -2,14 +2,14 @@ import asyncio
 import json
 import random
 from dataclasses import dataclass
+from datetime import datetime
 
 from bs4 import BeautifulSoup
-from bs4.element import Tag
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
 from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
 from crawl4ai.models import CrawlResultContainer
 
-from src.config import browser_config
+from src.config import DATA_PATH, browser_config
 
 BASE_URL = "https://mx.computrabajo.com"
 ERROR_URL = "https://mx.computrabajo.com/trabajo-de-python?p=95"
@@ -54,7 +54,13 @@ def get_job_details(soup: BeautifulSoup) -> dict:
     Extract job details from the job description page.
     """
     box_detail = soup.find("div", class_="box_detail")
-    all_ps = box_detail.find("div", class_="fs14").find_all("p")
+    fs14_div = box_detail.find("div", class_="fs14")
+
+    if not fs14_div:
+        return {}
+
+    all_ps = fs14_div.find_all("p")
+
     description = " ".join(
         box_detail.find("div", class_="t_word_wrap").text.strip().split("\n")
     )
@@ -226,7 +232,7 @@ async def main_scraper():
         # Initial chunk
         all_offers = await scraper.get_data()
 
-        for url_idx in range(94, 100):
+        for url_idx in range(2, 100):
             new_url = f"{JOB_URL}?p={url_idx}"
             scraper.set_url(new_url)
             if not await scraper.is_next_page_available:
@@ -234,7 +240,14 @@ async def main_scraper():
             offers = await scraper.get_data()
             all_offers.extend(offers)
 
-        return all_offers
+    # Save all offers to a JSON file
+    current_time = datetime.now().strftime("%Y%m%d_%H_00")
+    file_name = DATA_PATH / f"{scraper.service_name}_job_offers_{current_time}.json"
+
+    with open(file_name, "w") as f:
+        json.dump(all_offers, f, indent=4)
+
+        # return all_offers
 
 
 async def main():
