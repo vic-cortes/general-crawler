@@ -136,7 +136,10 @@ class Scraper(MainPageSetup):
 
     @property
     def session_id(self) -> str:
-        return f"{self.service_name}_scraper_{random.randint(1000, 9999)}"
+        return f"{self.service_name}_scraper"
+
+    def set_url(self, url: str) -> None:
+        self.url = url
 
     async def _get_overview(self) -> dict | None:
         result = await self.crawler.arun(
@@ -158,12 +161,12 @@ class Scraper(MainPageSetup):
 
         config_click = CrawlerRunConfig(
             js_code=js,
+            js_only=True,
             wait_for=DETAIL_CSS_SELECTOR,
             session_id=self.session_id,
-            cache_mode=CacheMode.ENABLED,
             wait_for_timeout=5_000,
         )
-        result_detail = await self.crawler.arun(url=JOB_URL, config=config_click)
+        result_detail = await self.crawler.arun(url=self.url, config=config_click)
 
         if result_detail.success:
             # We use bs4 because the complex structure of the job details
@@ -176,10 +179,7 @@ class Scraper(MainPageSetup):
         """
         Click the next page button
         """
-        js_next = [
-            "console.log('dummy')",
-            "document.querySelector('span.b_primary.w48.buildLink.cp').click();",
-        ]
+        js_next = "document.querySelector('span.b_primary.w48.buildLink.cp').click();"
 
         config_click_next = CrawlerRunConfig(
             js_code=js_next,
@@ -188,7 +188,22 @@ class Scraper(MainPageSetup):
             session_id=self.session_id,
             wait_for_timeout=5_000,
         )
-        return await self.crawler.arun(url=JOB_URL, config=config_click_next)
+        return await self.crawler.arun(url=self.url, config=config_click_next)
+
+    @property
+    async def is_next_page_available(self) -> bool:
+        """
+        Check if the next page is available.
+        """
+
+        config_click_next = CrawlerRunConfig(
+            wait_for=DETAIL_CSS_SELECTOR,
+            session_id=self.session_id,
+            wait_for_timeout=5_000,
+        )
+
+        result = await self.crawler.arun(url=self.url, config=config_click_next)
+        return result.success
 
     async def get_data(self):
         """
@@ -204,13 +219,22 @@ class Scraper(MainPageSetup):
         return offers
 
 
-async def dummy():
+async def main_scraper():
     async with AsyncWebCrawler(config=browser_config) as crawler:
-        offers = {}
+        # offers_available = True
         scraper = Scraper(url=JOB_URL, crawler=crawler)
+        # Initial chunk
+        all_offers = await scraper.get_data()
 
-        while offers is not None:
+        for url_idx in range(94, 100):
+            new_url = f"{JOB_URL}?p={url_idx}"
+            scraper.set_url(new_url)
+            if not await scraper.is_next_page_available:
+                break
             offers = await scraper.get_data()
+            all_offers.extend(offers)
+
+        return all_offers
 
 
 async def main():
@@ -278,4 +302,4 @@ async def main():
 
 if __name__ == "__main__":
     # Run the async main function
-    asyncio.run(main())
+    asyncio.run(main_scraper())
