@@ -201,15 +201,13 @@ class Scraper(MainPageSetup):
         """
         Check if the next page is available.
         """
-
-        config_click_next = CrawlerRunConfig(
-            wait_for=DETAIL_CSS_SELECTOR,
-            session_id=self.session_id,
-            wait_for_timeout=5_000,
-        )
+        config_click_next = CrawlerRunConfig(session_id=self.session_id)
 
         result = await self.crawler.arun(url=self.url, config=config_click_next)
-        return result.success
+
+        soup = BeautifulSoup(result.html, "html.parser")
+        next_page_button = soup.select_one(DETAIL_CSS_SELECTOR)
+        return bool(next_page_button)
 
     async def get_data(self):
         """
@@ -220,7 +218,10 @@ class Scraper(MainPageSetup):
             return None
 
         for idx, offer in enumerate(offers):
-            offers[idx] = await self._get_details(idx, offer)
+            try:
+                offers[idx] = await self._get_details(idx, offer)
+            except Exception as e:
+                print(f"Error retrieving details for offer {idx}: {e}")
 
         return offers
 
@@ -246,8 +247,6 @@ async def main_scraper():
 
     with open(file_name, "w") as f:
         json.dump(all_offers, f, indent=4)
-
-        # return all_offers
 
 
 async def main():
