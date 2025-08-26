@@ -55,9 +55,13 @@ def get_job_details(soup: BeautifulSoup) -> dict:
     """
     box_detail = soup.find("div", class_="box_detail")
     fs14_div = box_detail.find("div", class_="fs14")
+    job_url = None
 
     if not fs14_div:
         return {}
+
+    if bubble := box_detail.find("div", class_="opt_bubble"):
+        job_url = f"{BASE_URL}{bubble.attrs['data-url']}"
 
     all_ps = fs14_div.find_all("p")
 
@@ -66,7 +70,11 @@ def get_job_details(soup: BeautifulSoup) -> dict:
     )
     requirements = box_detail.find("ul", class_="disc").text.strip()
 
-    dict_data = {"description": description, "requirements": requirements}
+    dict_data = {
+        "description": description,
+        "requirements": requirements,
+        "job_url": job_url,
+    }
 
     for p in all_ps:
         span_class = "__".join(p.find("span").attrs.get("class"))
@@ -147,6 +155,12 @@ class Scraper(MainPageSetup):
     def set_url(self, url: str) -> None:
         self.url = url
 
+    def _get_offer_id(self, soup: BeautifulSoup) -> str | None:
+        """
+        Extract the job offer ID from the URL.
+        """
+        return soup.find(id="IdOffer").attrs.get("value")
+
     async def _get_overview(self) -> dict | None:
         result = await self.crawler.arun(
             url=self.url,
@@ -178,6 +192,7 @@ class Scraper(MainPageSetup):
             # We use bs4 because the complex structure of the job details
             soup = BeautifulSoup(result_detail.html, "html.parser")
             offer["details"] = get_job_details(soup)
+            offer["offer_id"] = self._get_offer_id(soup)
 
         return offer
 

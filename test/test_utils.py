@@ -1,7 +1,7 @@
 import json
 
-
 from config import DATA_PATH
+from src.utils import DateConverter
 
 
 def test_data_path_exists():
@@ -10,5 +10,10 @@ def test_data_path_exists():
 
     with open(file_name) as file:
         data = json.load(file)
+
+    for job in data:
+        relative_date = job["relative_date"]
+        date_converter = DateConverter(relative_date)
+        job["absolute_date"] = date_converter.convert()
 
     print(f"{data=}")
