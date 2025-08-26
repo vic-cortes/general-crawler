@@ -1,6 +1,21 @@
-import re
-from dataclasses import dataclass
 from datetime import datetime, timedelta
+
+MONTHS = {
+    "enero": 1,
+    "febrero": 2,
+    "marzo": 3,
+    "abril": 4,
+    "mayo": 5,
+    "junio": 6,
+    "julio": 7,
+    "agosto": 8,
+    "septiembre": 9,
+    "octubre": 10,
+    "noviembre": 11,
+    "diciembre": 12,
+}
+
+DEFAULT_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 class DateConverter:
@@ -8,6 +23,7 @@ class DateConverter:
     def __init__(self, raw_date: str) -> None:
         self.raw_date = raw_date.lower()
         self._digit = self._get_digit()
+        self._current_date = datetime.now()
 
     def _get_digit(self) -> str:
         return "".join([el for el in list(self.raw_date) if el.isdigit()])
@@ -25,28 +41,35 @@ class DateConverter:
         return "días" in self.raw_date
 
     def _convert_from_hour(self) -> datetime:
-        pass
+        return self._current_date - timedelta(hours=int(self._digit))
 
     def _convert_from_yesterday(self) -> datetime:
-        pass
+        return self._current_date - timedelta(days=1)
 
     def _convert_from_days(self) -> datetime:
-        pass
+        return self._current_date - timedelta(days=int(self._digit))
 
-    def convert_relative_date_to_absolute(self) -> str:
+    def _default(self) -> datetime:
+        month_name = [el for el in self.raw_date.split() if el in MONTHS][0]
+
+        if not month_name:
+            raise ValueError(f"Month not found in {self.raw_date}")
+
+        month_number = MONTHS.get(month_name)
+        day = int(self._digit)
+        return datetime(self._current_date.year, month_number, day)
+
+    def convert(self) -> str:
         """
         Convert a relative date string to an absolute date string.
         """
-        value = [el for el in list(self.raw_date) if el.isdigit()]
+        if self.is_yesterday:
+            standard_date = self._convert_from_yesterday()
+        elif self.is_hour:
+            standard_date = self._convert_from_hour()
+        elif self.is_days:
+            standard_date = self._convert_from_days()
+        else:
+            standard_date = self._default()
 
-        if value:
-            pass
-
-        if "horas" in self.raw_date:
-            # Use regex to extract the number of hours
-            match = re.search(r"(\d+) horas", self.raw_date)
-            if match:
-                hours = int(match.group(1))
-                absolute_date = datetime.now() - timedelta(hours=hours)
-                return absolute_date.strftime("%Y-%m-%d %H:%M:%S")
-        return self.raw_date
+        return standard_date.strftime(DEFAULT_FORMAT)

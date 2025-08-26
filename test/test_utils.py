@@ -1,6 +1,5 @@
 import json
 
-import pytest
 
 from config import DATA_PATH
 
