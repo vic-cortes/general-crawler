@@ -23,6 +23,7 @@ DETAIL_ICONS = {
     "i_money": "salary",
     "i_home": "place",
 }
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 output_schema = {
     "name": "Computrabajo Job Scraper",
@@ -193,6 +194,7 @@ class Scraper(MainPageSetup):
             soup = BeautifulSoup(result_detail.html, "html.parser")
             offer["details"] = get_job_details(soup)
             offer["offer_id"] = self._get_offer_id(soup)
+            offer["current_datetime"] = datetime.now().strftime(DATE_FORMAT)
 
         return offer
 
