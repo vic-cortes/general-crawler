@@ -83,3 +83,52 @@ class DateConverter:
             standard_date = self._default()
 
         return standard_date.strftime(DEFAULT_FORMAT)
+
+
+DECIMAL_PLACES = 100
+
+
+class SalaryConverter:
+
+    def __init__(self, raw_salary: str) -> None:
+        self.raw_salary = raw_salary or ""
+        self.raw_salary = self.raw_salary.strip().lower()
+
+    def _get_digit(self) -> str:
+        return "".join([el for el in list(self.raw_salary) if el.isdigit()])
+
+    @property
+    def is_monthly(self) -> bool:
+        return "mensual" in self.raw_salary
+
+    @property
+    def is_hourly(self) -> bool:
+        return "horas" in self.raw_salary
+
+    @property
+    def has_commission(self) -> bool:
+        return "comisión" in self.raw_salary
+
+    def _convert_from_monthly(self) -> float:
+        return float(self._get_digit()) / DECIMAL_PLACES
+
+    def _convert_from_hourly(self) -> float:
+        return self._get_digit() / DECIMAL_PLACES
+
+    def _default(self) -> float:
+        return 0.0
+
+    def convert(self) -> dict:
+        salary = {}
+
+        if self.is_monthly:
+            value = self._convert_from_monthly()
+        elif self.is_hourly:
+            value = self._convert_from_hourly()
+        else:
+            value = self._default()
+
+        salary["base"] = value
+        salary["has_commission"] = self.has_commission
+
+        return salary
