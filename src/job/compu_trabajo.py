@@ -266,6 +266,59 @@ async def main_scraper():
         json.dump(all_offers, f, indent=4)
 
 
+async def parallel_scraping():
+
+    strategy = JsonCssExtractionStrategy(
+        {
+            "name": "Computrabajo Job Scraper",
+            "baseSelector": BASE_SELECTOR,
+            "fields": [
+                {"name": "title", "selector": "a.js-o-link", "type": "text"},
+                {"name": "company", "selector": "p.dFlex", "type": "text"},
+                {
+                    "name": "location",
+                    "selector": "p:nth-child(3)",
+                    "type": "text",
+                },
+                {
+                    "name": "relative_date",
+                    "selector": "p.fs13.fc_aux.mt15",
+                    "type": "text",
+                },
+                {
+                    "name": "description",
+                    "selector": "div.fs16.t_word_wrap",
+                    "type": "text",
+                },
+            ],
+        }
+    )
+
+    config = CrawlerRunConfig(
+        extraction_strategy=strategy,
+        wait_for=KEY_CSS_SELECTOR,
+        # session_id=self.session_id,
+        wait_for_timeout=2_000,
+        stream=True,
+        # simulate_user=True,
+        # mean_delay=1.5,
+        # delay_before_return_html=1.0,
+    )
+    all_data = []
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        all_urls = [JOB_URL] + [f"{JOB_URL}?p={i}" for i in range(2, 100)]
+
+        async for result in await crawler.arun_many(urls=all_urls, config=config):
+            # print(f"{result=}")
+            if not result.success:
+                print("Error:", result.error_message)
+                continue
+            data = json.loads(result.extracted_content)
+            all_data.append(data)
+
+        return all_data
+
+
 async def main():
     # random number
     random_number = random.randint(1000, 9999)
@@ -331,4 +384,4 @@ async def main():
 
 if __name__ == "__main__":
     # Run the async main function
-    asyncio.run(main_scraper())
+    asyncio.run(parallel_scraping())
