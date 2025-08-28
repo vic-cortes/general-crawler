@@ -266,6 +266,33 @@ async def main_scraper():
         json.dump(all_offers, f, indent=4)
 
 
+async def get_details(
+    crawler: AsyncWebCrawler, url: str, session_id: str, idx: int, offer: dict
+) -> dict:
+    """
+    Retrieve details from the page
+    """
+    js = f"document.querySelectorAll('article.box_offer')[{idx}].click();"
+
+    config_click = CrawlerRunConfig(
+        js_code=js,
+        js_only=True,
+        wait_for=DETAIL_CSS_SELECTOR,
+        session_id=session_id,
+        wait_for_timeout=5_000,
+    )
+    result_detail = await crawler.arun(url=url, config=config_click)
+
+    if result_detail.success:
+        # We use bs4 because the complex structure of the job details
+        soup = BeautifulSoup(result_detail.html, "html.parser")
+        offer["details"] = get_job_details(soup)
+        # offer["offer_id"] = self._get_offer_id(soup)
+        offer["current_datetime"] = datetime.now().strftime(DATE_FORMAT)
+
+    return offer
+
+
 async def parallel_scraping():
 
     strategy = JsonCssExtractionStrategy(
@@ -307,14 +334,26 @@ async def parallel_scraping():
     all_data = []
     async with AsyncWebCrawler(config=browser_config) as crawler:
         all_urls = [JOB_URL] + [f"{JOB_URL}?p={i}" for i in range(2, 100)]
+        id_counter = 0
 
         async for result in await crawler.arun_many(urls=all_urls, config=config):
-            # print(f"{result=}")
+            id_counter += 1
+            session_id = f"job_listing_{id_counter}"
+            print(f"{result=}")
             if not result.success:
                 print("Error:", result.error_message)
                 continue
-            data = json.loads(result.extracted_content)
-            all_data.append(data)
+            offers = json.loads(result.extracted_content)
+
+            for idx, offer in enumerate(offers):
+                try:
+                    offers[idx] = await get_details(
+                        crawler, result.url, session_id, idx, offer
+                    )
+                except Exception as e:
+                    print(f"Error retrieving details for offer {idx}: {e}")
+
+            # all_data.append(offers)
 
         return all_data
 
@@ -384,4 +423,5 @@ async def main():
 
 if __name__ == "__main__":
     # Run the async main function
-    asyncio.run(parallel_scraping())
+    asyncio.run(main_scraper())
+    # asyncio.run(parallel_scraping())

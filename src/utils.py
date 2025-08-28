@@ -34,11 +34,18 @@ class DateConverter:
 
     @property
     def is_hour(self) -> bool:
-        return "horas" in self.raw_date
+        return "horas" in self.raw_date or "hora" in self.raw_date
+
+    @property
+    def is_minutes(self) -> bool:
+        return "minutos" in self.raw_date or "minuto" in self.raw_date
 
     @property
     def is_days(self) -> bool:
         return "días" in self.raw_date
+
+    def _convert_from_minutes(self) -> datetime:
+        return self._current_date - timedelta(minutes=int(self._digit))
 
     def _convert_from_hour(self) -> datetime:
         return self._current_date - timedelta(hours=int(self._digit))
@@ -69,7 +76,10 @@ class DateConverter:
             standard_date = self._convert_from_hour()
         elif self.is_days:
             standard_date = self._convert_from_days()
+        elif self.is_minutes:
+            standard_date = self._convert_from_minutes()
         else:
+            print(self.raw_date)
             standard_date = self._default()
 
         return standard_date.strftime(DEFAULT_FORMAT)
