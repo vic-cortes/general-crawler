@@ -1,7 +1,7 @@
 import json
 
 from config import DATA_PATH
-from src.utils import DateConverter
+from src.job.compu_trabajo import CompuTrabajoDateConverter
 
 
 def test_data_path_exists():
@@ -13,7 +13,7 @@ def test_data_path_exists():
 
     for job in data:
         relative_date = job["relative_date"]
-        date_converter = DateConverter(relative_date)
+        date_converter = CompuTrabajoDateConverter(relative_date)
         job["absolute_date"] = date_converter.convert()
 
     print(f"{data=}")
