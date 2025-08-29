@@ -31,7 +31,20 @@
       "name": "[PROJECT] Computrabajo",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/src/job/compu_trabajo.py",
+      "program": "${workspaceFolder}/src/job/compu_trabajo/scraper.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    },
+    {
+      "name": "[PROJECT] OCC",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/job/occ/scraper.py",
       "console": "integratedTerminal",
       "justMyCode": true,
       "python": "${workspaceFolder}/.venv/bin/python",
