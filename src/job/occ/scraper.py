@@ -23,62 +23,6 @@ DETAIL_ICONS = {
     "i_home": "place",
 }
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-
-output_schema = {
-    "name": "Computrabajo Job Scraper",
-    "baseSelector": "article.box_offer",
-    "fields": [
-        {"name": "title", "selector": "a.js-o-link", "type": "text"},
-        {"name": "company", "selector": "p.dFlex", "type": "text"},
-        {
-            "name": "location",
-            "selector": "p:nth-child(3)",
-            "type": "text",
-        },
-        {
-            "name": "relative_date",
-            "selector": "p.fs13.fc_aux.mt15",
-            "type": "text",
-        },
-        {
-            "name": "description",
-            "selector": "div.fs16.t_word_wrap",
-            "type": "text",
-        },
-    ],
-}
-
-
-def get_job_details(soup: BeautifulSoup) -> dict:
-    """
-    Extract job details from the job description page.
-    """
-    box_detail = soup.find(id="job-detail-container")
-    job_url = None
-
-    description_tag = [
-        el for el in box_detail.find_all("p") if "descripción" in el.text.lower()
-    ]
-
-    if not description_tag:
-        return {}
-
-    description_tag = description_tag[0]
-    description = description_tag.parent.text.strip()
-    id_tag = [el for el in box_detail.find_all("p") if "id:" in el.text.lower()]
-
-    if id_tag:
-        id = id_tag[0].text.split()[-1]
-        job_url = f"{BASE_URL}/empleo/oferta/{id}/"
-
-    dict_data = {
-        "description": description,
-        "job_url": job_url,
-    }
-
-    return dict_data
-
-
 BASE_SELECTOR = "div.bg-bg-surface-default"
 
 
@@ -166,6 +110,46 @@ class Scraper(MainPageSetup):
 
         return json.loads(result.extracted_content)
 
+    def _get_salary(self) -> str | None:
+        """
+        Extract the salary information from the job details.
+        """
+
+        for span in self.box_detail.find_all("span"):
+            if span.attrs and "i_money" in span.attrs.get("class", []):
+                return span.parent.text.strip()
+
+    def get_job_details(self, soup: BeautifulSoup) -> dict:
+        """
+        Extract job details from the job description page.
+        """
+        self.box_detail = soup.find(id="job-detail-container")
+        salary = self._get_salary()
+        job_url = None
+
+        description_tag = [
+            el
+            for el in self.box_detail.find_all("p")
+            if "descripción" in el.text.lower()
+        ]
+
+        if not description_tag:
+            return {}
+
+        description_tag = description_tag[0]
+        description = description_tag.parent.text.strip()
+        id_tag = [
+            el for el in self.box_detail.find_all("p") if "id:" in el.text.lower()
+        ]
+
+        if id_tag:
+            id = id_tag[0].text.split()[-1]
+            job_url = f"{BASE_URL}/empleo/oferta/{id}/"
+
+        dict_data = {"description": description, "job_url": job_url, "salary": salary}
+
+        return dict_data
+
     async def _get_details(self, idx: int, offer: dict) -> dict:
         """
         Retrieve details from the page
@@ -184,8 +168,8 @@ class Scraper(MainPageSetup):
         if result_detail.success:
             # We use bs4 because the complex structure of the job details
             soup = BeautifulSoup(result_detail.html, "html.parser")
-            offer["details"] = get_job_details(soup)
-            offer["offer_id"] = self._get_offer_id(soup)
+            offer["details"] = self.get_job_details(soup)
+            # offer["offer_id"] = self._get_offer_id(soup)
             offer["current_datetime"] = datetime.now().strftime(DATE_FORMAT)
 
         return offer
@@ -215,7 +199,7 @@ class Scraper(MainPageSetup):
         result = await self.crawler.arun(url=self.url, config=config_click_next)
 
         soup = BeautifulSoup(result.html, "html.parser")
-        next_page_button = soup.select_one(DETAIL_CSS_SELECTOR)
+        next_page_button = soup.select_one("#btn-next-offer")
         return bool(next_page_button)
 
     async def get_data(self):
@@ -242,7 +226,7 @@ async def main_scraper():
         all_offers = await scraper.get_data()
 
         for url_idx in range(2, 100):
-            new_url = f"{JOB_URL}?p={url_idx}"
+            new_url = f"{JOB_URL}?page={url_idx}"
             scraper.set_url(new_url)
             if not await scraper.is_next_page_available:
                 break
