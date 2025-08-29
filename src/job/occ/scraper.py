@@ -91,13 +91,6 @@ class Scraper(MainPageSetup):
     def set_url(self, url: str) -> None:
         self.url = url
 
-    def _get_offer_id(self, soup: BeautifulSoup) -> str | None:
-        """
-        Extract the job offer ID from the URL.
-        """
-        id_tag = [el for el in soup.find_all("p") if "id:" in el.text.lower()]
-        return
-
     async def _get_overview(self) -> dict | None:
         result = await self.crawler.arun(
             url=self.url,
@@ -119,32 +112,50 @@ class Scraper(MainPageSetup):
             if span.attrs and "i_money" in span.attrs.get("class", []):
                 return span.parent.text.strip()
 
-    def get_job_details(self, soup: BeautifulSoup) -> dict:
+    def _get_description(self) -> str | None:
         """
-        Extract job details from the job description page.
+        Extract the job description from the job details.
         """
-        self.box_detail = soup.find(id="job-detail-container")
-        salary = self._get_salary()
-        job_url = None
+        DESCRIPTION = "descripción"
+        all_ps = self.box_detail.find_all("p")
 
-        description_tag = [
-            el
-            for el in self.box_detail.find_all("p")
-            if "descripción" in el.text.lower()
-        ]
+        description_tag = [el for el in all_ps if DESCRIPTION in el.text.lower()]
 
         if not description_tag:
             return {}
 
         description_tag = description_tag[0]
-        description = description_tag.parent.text.strip()
-        id_tag = [
-            el for el in self.box_detail.find_all("p") if "id:" in el.text.lower()
-        ]
+        return description_tag.parent.text.strip()
 
-        if id_tag:
-            id = id_tag[0].text.split()[-1]
-            job_url = f"{BASE_URL}/empleo/oferta/{id}/"
+    def _get_offer_id(self) -> str | None:
+        """
+        Extract the job ID from the job details.
+        """
+        JOB_ID = "id:"
+        all_ps = self.box_detail.find_all("p")
+
+        job_id_tag = [el for el in all_ps if JOB_ID in el.text.lower()]
+
+        if not job_id_tag:
+            return None
+
+        return job_id_tag[0].text.split()[-1]
+
+    def get_job_details(self, soup: BeautifulSoup) -> dict:
+        """
+        Extract job details from the job description page.
+        """
+        DETAIL_SELECTOR = "job-detail-container"
+        job_url = None
+
+        self.box_detail = soup.find(id=DETAIL_SELECTOR)
+
+        salary = self._get_salary()
+        description = self._get_description()
+        job_id = self._get_offer_id()
+
+        if job_id:
+            job_url = f"{BASE_URL}/empleo/oferta/{job_id}/"
 
         dict_data = {"description": description, "job_url": job_url, "salary": salary}
 
@@ -169,7 +180,7 @@ class Scraper(MainPageSetup):
             # We use bs4 because the complex structure of the job details
             soup = BeautifulSoup(result_detail.html, "html.parser")
             offer["details"] = self.get_job_details(soup)
-            # offer["offer_id"] = self._get_offer_id(soup)
+            offer["offer_id"] = self._get_offer_id()
             offer["current_datetime"] = datetime.now().strftime(DATE_FORMAT)
 
         return offer
@@ -239,33 +250,6 @@ async def main_scraper():
 
     with open(file_name, "w") as f:
         json.dump(all_offers, f, indent=4)
-
-
-async def get_details(
-    crawler: AsyncWebCrawler, url: str, session_id: str, idx: int, offer: dict
-) -> dict:
-    """
-    Retrieve details from the page
-    """
-    js = f"document.querySelectorAll('article.box_offer')[{idx}].click();"
-
-    config_click = CrawlerRunConfig(
-        js_code=js,
-        js_only=True,
-        wait_for=DETAIL_CSS_SELECTOR,
-        session_id=session_id,
-        wait_for_timeout=5_000,
-    )
-    result_detail = await crawler.arun(url=url, config=config_click)
-
-    if result_detail.success:
-        # We use bs4 because the complex structure of the job details
-        soup = BeautifulSoup(result_detail.html, "html.parser")
-        offer["details"] = get_job_details(soup)
-        # offer["offer_id"] = self._get_offer_id(soup)
-        offer["current_datetime"] = datetime.now().strftime(DATE_FORMAT)
-
-    return offer
 
 
 if __name__ == "__main__":

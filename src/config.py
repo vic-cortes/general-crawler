@@ -18,6 +18,6 @@ class BrowserType(Enum):
 
 browser_config = BrowserConfig(
     browser_type=BrowserType.CHROMIUM.value,
-    headless=False,
+    headless=True,
     verbose=True,
 )
