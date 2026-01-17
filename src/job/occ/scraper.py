@@ -1,7 +1,6 @@
 import asyncio
 
 from bs4 import BeautifulSoup
-from crawl4ai import AsyncWebCrawler
 
 from src.job.mixins import BaseScraper, ConcurrentScraperMixin
 

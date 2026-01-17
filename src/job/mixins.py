@@ -16,7 +16,6 @@ from typing import List, Optional
 from bs4 import BeautifulSoup
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
-from crawl4ai.models import CrawlResultContainer
 
 from src.config import DATA_PATH, browser_config
 
