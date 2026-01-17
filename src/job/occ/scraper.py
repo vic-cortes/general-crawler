@@ -3,6 +3,7 @@ import json
 import random
 from dataclasses import dataclass
 from datetime import datetime
+from typing import List, Optional
 
 from bs4 import BeautifulSoup
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
@@ -86,7 +87,7 @@ class Scraper(MainPageSetup):
 
     @property
     def session_id(self) -> str:
-        return f"{self.service_name}_scraper"
+        return f"{self.service_name}_scraper_{id(self.crawler)}"
 
     def set_url(self, url: str) -> None:
         self.url = url
@@ -251,27 +252,112 @@ class Scraper(MainPageSetup):
         return offers
 
 
-async def main_scraper():
-    async with AsyncWebCrawler(config=browser_config) as crawler:
-        scraper = Scraper(url=JOB_URL, crawler=crawler)
-        # Initial chunk
-        all_offers = await scraper.get_data()
+async def scrape_page(
+    url: str, semaphore: asyncio.Semaphore, page_num: int
+) -> Optional[List[dict]]:
+    """
+    Scrape a single page with its own browser instance.
 
-        for url_idx in range(2, 100):
-            new_url = f"{JOB_URL}?page={url_idx}"
-            scraper.set_url(new_url)
-            if not await scraper.is_next_page_available:
-                break
-            offers = await scraper.get_data()
-            all_offers.extend(offers)
+    Args:
+        url: The URL to scrape
+        semaphore: Semaphore to limit concurrent browser instances
+        page_num: Page number for logging purposes
+
+    Returns:
+        List of job offers or None if failed
+    """
+    async with semaphore:
+        try:
+            async with AsyncWebCrawler(config=browser_config) as crawler:
+                scraper = Scraper(url=url, crawler=crawler)
+                print(f"Starting scrape of page {page_num}: {url}")
+
+                # Check if page exists before scraping
+                if page_num > 1 and not await scraper.is_next_page_available:
+                    print(f"Page {page_num} not available, stopping.")
+                    return None
+
+                offers = await scraper.get_data()
+                if offers:
+                    print(f"Completed page {page_num}: found {len(offers)} offers")
+                    return offers
+                else:
+                    print(f"Page {page_num}: no offers found")
+                    return []
+
+        except Exception as e:
+            print(f"Error scraping page {page_num}: {e}")
+            return []
+
+
+async def main_scraper(max_pages: int = 100, max_concurrent_browsers: int = 3):
+    """
+    Enhanced main scraper with concurrent execution.
+
+    Args:
+        max_pages: Maximum number of pages to scrape
+        max_concurrent_browsers: Maximum number of concurrent browser instances
+    """
+    print(
+        f"Starting async scraper with max {max_concurrent_browsers} concurrent browsers"
+    )
+
+    # Create semaphore to limit concurrent browser instances
+    semaphore = asyncio.Semaphore(max_concurrent_browsers)
+
+    # Prepare tasks for concurrent execution
+    tasks = []
+
+    # First page (base URL)
+    tasks.append(scrape_page(JOB_URL, semaphore, 1))
+
+    # Additional pages
+    for page_num in range(2, max_pages + 1):
+        page_url = f"{JOB_URL}?page={page_num}"
+        tasks.append(scrape_page(page_url, semaphore, page_num))
+
+    # Execute all tasks concurrently
+    print(f"Launching {len(tasks)} concurrent scraping tasks...")
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Process results
+    all_offers = []
+    successful_pages = 0
+
+    for i, result in enumerate(results):
+        page_num = i + 1
+
+        if isinstance(result, Exception):
+            print(f"Page {page_num} failed with exception: {result}")
+        elif result is None:
+            print(f"Page {page_num} returned None (likely no more pages)")
+            # Stop processing further pages when we hit None
+            break
+        elif isinstance(result, list):
+            all_offers.extend(result)
+            successful_pages += 1
+            print(f"Page {page_num}: added {len(result)} offers")
+
+    print(
+        f"Scraping completed. Processed {successful_pages} pages, found {len(all_offers)} total offers"
+    )
+
+    if not all_offers:
+        print("No offers found. Exiting without creating file.")
+        return
 
     # Save all offers to a JSON file
     current_time = datetime.now().strftime("%Y%m%d_%H_00")
-    file_name = DATA_PATH / f"{scraper.service_name}_job_offers_{current_time}.json"
+    service_name = "occ"
+    file_name = DATA_PATH / f"{service_name}_job_offers_{current_time}.json"
 
-    with open(file_name, "w") as f:
-        json.dump(all_offers, f, indent=4)
+    with open(file_name, "w", encoding="utf-8") as f:
+        json.dump(all_offers, f, indent=4, ensure_ascii=False)
+
+    print(f"Results saved to: {file_name}")
+    print(f"Total offers scraped: {len(all_offers)}")
 
 
 if __name__ == "__main__":
+    # Run with default settings: max 100 pages, max 3 concurrent browsers
     asyncio.run(main_scraper())
