@@ -3,6 +3,7 @@ import json
 import random
 from dataclasses import dataclass
 from datetime import datetime
+from typing import List, Optional
 
 from bs4 import BeautifulSoup
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
@@ -24,30 +25,7 @@ DETAIL_ICONS = {
     "i_home": "place",
 }
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-
-output_schema = {
-    "name": "Computrabajo Job Scraper",
-    "baseSelector": "article.box_offer",
-    "fields": [
-        {"name": "title", "selector": "a.js-o-link", "type": "text"},
-        {"name": "company", "selector": "p.dFlex", "type": "text"},
-        {
-            "name": "location",
-            "selector": "p:nth-child(3)",
-            "type": "text",
-        },
-        {
-            "name": "relative_date",
-            "selector": "p.fs13.fc_aux.mt15",
-            "type": "text",
-        },
-        {
-            "name": "description",
-            "selector": "div.fs16.t_word_wrap",
-            "type": "text",
-        },
-    ],
-}
+BASE_SELECTOR = "article.box_offer"
 
 
 def get_job_details(soup: BeautifulSoup) -> dict:
@@ -55,6 +33,10 @@ def get_job_details(soup: BeautifulSoup) -> dict:
     Extract job details from the job description page.
     """
     box_detail = soup.find("div", class_="box_detail")
+
+    if not box_detail:
+        return {}
+
     fs14_div = box_detail.find("div", class_="fs14")
     job_url = None
 
@@ -66,10 +48,15 @@ def get_job_details(soup: BeautifulSoup) -> dict:
 
     all_ps = fs14_div.find_all("p")
 
-    description = " ".join(
-        box_detail.find("div", class_="t_word_wrap").text.strip().split("\n")
-    )
-    requirements = box_detail.find("ul", class_="disc").text.strip()
+    # Handle description safely
+    description = ""
+    if desc_div := box_detail.find("div", class_="t_word_wrap"):
+        description = " ".join(desc_div.text.strip().split("\n"))
+
+    # Handle requirements safely
+    requirements = ""
+    if req_ul := box_detail.find("ul", class_="disc"):
+        requirements = req_ul.text.strip()
 
     dict_data = {
         "description": description,
@@ -78,7 +65,11 @@ def get_job_details(soup: BeautifulSoup) -> dict:
     }
 
     for p in all_ps:
-        span_class = "__".join(p.find("span").attrs.get("class"))
+        span = p.find("span")
+        if not span or not span.attrs:
+            continue
+
+        span_class = "__".join(span.attrs.get("class", []))
         text = p.text.strip()
 
         for icon_class, key in DETAIL_ICONS.items():
@@ -87,9 +78,6 @@ def get_job_details(soup: BeautifulSoup) -> dict:
                 break
 
     return dict_data
-
-
-BASE_SELECTOR = "article.box_offer"
 
 
 class MainPageSetup:
@@ -151,7 +139,7 @@ class Scraper(MainPageSetup):
 
     @property
     def session_id(self) -> str:
-        return f"{self.service_name}_scraper"
+        return f"{self.service_name}_scraper_{id(self.crawler)}"
 
     def set_url(self, url: str) -> None:
         self.url = url
@@ -160,7 +148,10 @@ class Scraper(MainPageSetup):
         """
         Extract the job offer ID from the URL.
         """
-        return soup.find(id="IdOffer").attrs.get("value")
+        id_offer_elem = soup.find(id="IdOffer")
+        if id_offer_elem:
+            return id_offer_elem.attrs.get("value")
+        return None
 
     async def _get_overview(self) -> dict | None:
         result = await self.crawler.arun(
@@ -223,8 +214,9 @@ class Scraper(MainPageSetup):
         result = await self.crawler.arun(url=self.url, config=config_click_next)
 
         soup = BeautifulSoup(result.html, "html.parser")
-        next_page_button = soup.select_one(DETAIL_CSS_SELECTOR)
-        return bool(next_page_button)
+        # Check for offers container instead of detail selector
+        offers_container = soup.select_one(KEY_CSS_SELECTOR)
+        return bool(offers_container and soup.select("article.box_offer"))
 
     async def get_data(self):
         """
@@ -243,185 +235,112 @@ class Scraper(MainPageSetup):
         return offers
 
 
-async def main_scraper():
-    async with AsyncWebCrawler(config=browser_config) as crawler:
-        # offers_available = True
-        scraper = Scraper(url=JOB_URL, crawler=crawler)
-        # Initial chunk
-        all_offers = await scraper.get_data()
+async def scrape_page(
+    url: str, semaphore: asyncio.Semaphore, page_num: int
+) -> Optional[List[dict]]:
+    """
+    Scrape a single page with its own browser instance.
 
-        for url_idx in range(2, 100):
-            new_url = f"{JOB_URL}?p={url_idx}"
-            scraper.set_url(new_url)
-            if not await scraper.is_next_page_available:
-                break
-            offers = await scraper.get_data()
-            all_offers.extend(offers)
+    Args:
+        url: The URL to scrape
+        semaphore: Semaphore to limit concurrent browser instances
+        page_num: Page number for logging purposes
+
+    Returns:
+        List of job offers or None if failed
+    """
+    async with semaphore:
+        try:
+            async with AsyncWebCrawler(config=browser_config) as crawler:
+                scraper = Scraper(url=url, crawler=crawler)
+                print(f"Starting scrape of page {page_num}: {url}")
+
+                # Check if page exists before scraping
+                if page_num > 1 and not await scraper.is_next_page_available:
+                    print(f"Page {page_num} not available, stopping.")
+                    return None
+
+                offers = await scraper.get_data()
+                if offers:
+                    print(f"Completed page {page_num}: found {len(offers)} offers")
+                    return offers
+                else:
+                    print(f"Page {page_num}: no offers found")
+                    return []
+
+        except Exception as e:
+            print(f"Error scraping page {page_num}: {e}")
+            return []
+
+
+async def main_scraper(max_pages: int = 100, max_concurrent_browsers: int = 3):
+    """
+    Enhanced main scraper with concurrent execution.
+
+    Args:
+        max_pages: Maximum number of pages to scrape
+        max_concurrent_browsers: Maximum number of concurrent browser instances
+    """
+    print(
+        f"Starting async ComputTrabajo scraper with max {max_concurrent_browsers} concurrent browsers"
+    )
+
+    # Create semaphore to limit concurrent browser instances
+    semaphore = asyncio.Semaphore(max_concurrent_browsers)
+
+    # Prepare tasks for concurrent execution
+    tasks = []
+
+    # First page (base URL)
+    tasks.append(scrape_page(JOB_URL, semaphore, 1))
+
+    # Additional pages (ComputTrabajo uses ?p= parameter)
+    for page_num in range(2, max_pages + 1):
+        page_url = f"{JOB_URL}?p={page_num}"
+        tasks.append(scrape_page(page_url, semaphore, page_num))
+
+    # Execute all tasks concurrently
+    print(f"Launching {len(tasks)} concurrent scraping tasks...")
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Process results
+    all_offers = []
+    successful_pages = 0
+
+    for i, result in enumerate(results):
+        page_num = i + 1
+
+        if isinstance(result, Exception):
+            print(f"Page {page_num} failed with exception: {result}")
+        elif result is None:
+            print(f"Page {page_num} returned None (likely no more pages)")
+            # Stop processing further pages when we hit None
+            break
+        elif isinstance(result, list):
+            all_offers.extend(result)
+            successful_pages += 1
+            print(f"Page {page_num}: added {len(result)} offers")
+
+    print(
+        f"Scraping completed. Processed {successful_pages} pages, found {len(all_offers)} total offers"
+    )
+
+    if not all_offers:
+        print("No offers found. Exiting without creating file.")
+        return
 
     # Save all offers to a JSON file
     current_time = datetime.now().strftime("%Y%m%d_%H_00")
-    file_name = DATA_PATH / f"{scraper.service_name}_job_offers_{current_time}.json"
+    service_name = "compu_trabajo"
+    file_name = DATA_PATH / f"{service_name}_job_offers_{current_time}.json"
 
-    with open(file_name, "w") as f:
-        json.dump(all_offers, f, indent=4)
+    with open(file_name, "w", encoding="utf-8") as f:
+        json.dump(all_offers, f, indent=4, ensure_ascii=False)
 
-
-async def get_details(
-    crawler: AsyncWebCrawler, url: str, session_id: str, idx: int, offer: dict
-) -> dict:
-    """
-    Retrieve details from the page
-    """
-    js = f"document.querySelectorAll('article.box_offer')[{idx}].click();"
-
-    config_click = CrawlerRunConfig(
-        js_code=js,
-        js_only=True,
-        wait_for=DETAIL_CSS_SELECTOR,
-        session_id=session_id,
-        wait_for_timeout=5_000,
-    )
-    result_detail = await crawler.arun(url=url, config=config_click)
-
-    if result_detail.success:
-        # We use bs4 because the complex structure of the job details
-        soup = BeautifulSoup(result_detail.html, "html.parser")
-        offer["details"] = get_job_details(soup)
-        # offer["offer_id"] = self._get_offer_id(soup)
-        offer["current_datetime"] = datetime.now().strftime(DATE_FORMAT)
-
-    return offer
-
-
-async def parallel_scraping():
-
-    strategy = JsonCssExtractionStrategy(
-        {
-            "name": "Computrabajo Job Scraper",
-            "baseSelector": BASE_SELECTOR,
-            "fields": [
-                {"name": "title", "selector": "a.js-o-link", "type": "text"},
-                {"name": "company", "selector": "p.dFlex", "type": "text"},
-                {
-                    "name": "location",
-                    "selector": "p:nth-child(3)",
-                    "type": "text",
-                },
-                {
-                    "name": "relative_date",
-                    "selector": "p.fs13.fc_aux.mt15",
-                    "type": "text",
-                },
-                {
-                    "name": "description",
-                    "selector": "div.fs16.t_word_wrap",
-                    "type": "text",
-                },
-            ],
-        }
-    )
-
-    config = CrawlerRunConfig(
-        extraction_strategy=strategy,
-        wait_for=KEY_CSS_SELECTOR,
-        # session_id=self.session_id,
-        wait_for_timeout=2_000,
-        stream=True,
-        # simulate_user=True,
-        # mean_delay=1.5,
-        # delay_before_return_html=1.0,
-    )
-    all_data = []
-    async with AsyncWebCrawler(config=browser_config) as crawler:
-        all_urls = [JOB_URL] + [f"{JOB_URL}?p={i}" for i in range(2, 100)]
-        id_counter = 0
-
-        async for result in await crawler.arun_many(urls=all_urls, config=config):
-            id_counter += 1
-            session_id = f"job_listing_{id_counter}"
-            print(f"{result=}")
-            if not result.success:
-                print("Error:", result.error_message)
-                continue
-            offers = json.loads(result.extracted_content)
-
-            for idx, offer in enumerate(offers):
-                try:
-                    offers[idx] = await get_details(
-                        crawler, result.url, session_id, idx, offer
-                    )
-                except Exception as e:
-                    print(f"Error retrieving details for offer {idx}: {e}")
-
-            # all_data.append(offers)
-
-        return all_data
-
-
-async def main():
-    # random number
-    random_number = random.randint(1000, 9999)
-    SESSION_ID = f"job_listings_session_{random_number}"
-
-    strategy = JsonCssExtractionStrategy(output_schema)
-
-    crawler_config = CrawlerRunConfig(
-        extraction_strategy=strategy,
-        wait_for=KEY_CSS_SELECTOR,
-        session_id=SESSION_ID,  # Keep session for job listings
-        wait_for_timeout=5_000,
-    )
-
-    # Create an instance of AsyncWebCrawler
-    async with AsyncWebCrawler(config=browser_config) as crawler:
-        # Run the crawler on a URL
-        result = await crawler.arun(url=ERROR_URL, config=crawler_config)
-
-        if not result.success:
-            print("Error:", result.error_message)
-            return
-
-        # Save the result to a JSON file
-        offers = json.loads(result.extracted_content)
-
-        for idx, _ in enumerate(offers):
-            js = f"document.querySelectorAll('article.box_offer')[{idx}].click();"
-
-            config_click = CrawlerRunConfig(
-                js_code=js,
-                wait_for=DETAIL_CSS_SELECTOR,
-                session_id=SESSION_ID,
-                cache_mode=CacheMode.ENABLED,
-                wait_for_timeout=5_000,
-            )
-            result_detail = await crawler.arun(url=JOB_URL, config=config_click)
-
-            if result_detail.success:
-                # We use bs4 because the complex structure of the job details
-                soup = BeautifulSoup(result_detail.html, "html.parser")
-                dict_data = get_job_details(soup)
-                offers[idx]["details"] = dict_data
-
-        # Click next page
-        js_next = [
-            "console.log('dummy')",
-            "document.querySelector('span.b_primary.w48.buildLink.cp').click();",
-        ]
-
-        config_click_next = CrawlerRunConfig(
-            js_code=js_next,
-            js_only=True,
-            wait_for=DETAIL_CSS_SELECTOR,
-            session_id=SESSION_ID,
-            wait_for_timeout=5_000,
-        )
-        result_detail = await crawler.arun(url=JOB_URL, config=config_click_next)
-        result_detail = await crawler.arun(url=JOB_URL, config=config_click_next)
-
-        print(offers)
+    print(f"Results saved to: {file_name}")
+    print(f"Total offers scraped: {len(all_offers)}")
 
 
 if __name__ == "__main__":
-    # Run the async main function
+    # Run with default settings: max 100 pages, max 3 concurrent browsers
     asyncio.run(main_scraper())
-    # asyncio.run(parallel_scraping())
