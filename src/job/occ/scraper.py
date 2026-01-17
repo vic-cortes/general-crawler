@@ -141,6 +141,21 @@ class Scraper(MainPageSetup):
 
         return job_id_tag[0].text.split()[-1]
 
+    def _get_requirements(self) -> str | None:
+        """
+        Extract the job requirements from the job details.
+        """
+        REQUIREMENTS = "requisitos"
+        all_ps = self.box_detail.find_all("p")
+
+        requirements_tag = [el for el in all_ps if REQUIREMENTS in el.text.lower()]
+
+        if not requirements_tag:
+            return None
+
+        requirements_tag = requirements_tag[0].find_next_sibling()
+        return requirements_tag.text
+
     def get_job_details(self, soup: BeautifulSoup) -> dict:
         """
         Extract job details from the job description page.
@@ -153,11 +168,17 @@ class Scraper(MainPageSetup):
         salary = self._get_salary()
         description = self._get_description()
         job_id = self._get_offer_id()
+        requirements = self._get_requirements()
 
         if job_id:
             job_url = f"{BASE_URL}/empleo/oferta/{job_id}/"
 
-        dict_data = {"description": description, "job_url": job_url, "salary": salary}
+        dict_data = {
+            "description": description,
+            "job_url": job_url,
+            "salary": salary,
+            "requirements": requirements,
+        }
 
         return dict_data
 
