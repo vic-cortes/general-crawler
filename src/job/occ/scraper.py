@@ -185,4 +185,4 @@ async def main_scraper(max_pages: int = 100, max_concurrent_browsers: int = 3):
 
 if __name__ == "__main__":
     # Run with default settings: max 100 pages, max 3 concurrent browsers
-    asyncio.run(main_scraper())
+    asyncio.run(main_scraper(max_pages=50, max_concurrent_browsers=5))
