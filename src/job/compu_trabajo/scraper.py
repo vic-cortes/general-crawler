@@ -1,6 +1,7 @@
 import asyncio
 
 from bs4 import BeautifulSoup
+from crawl4ai import CrawlerRunConfig
 
 from src.job.mixins import BaseScraper, ConcurrentScraperMixin
 
@@ -119,16 +120,17 @@ class ComputTrabajoScraper(BaseScraper):
         return dict_data
 
     def _get_offer_id(self, soup: BeautifulSoup) -> str | None:
-        """Extract the job offer ID from the URL."""
-        id_offer_elem = soup.find(id="IdOffer")
-        if id_offer_elem:
+        """
+        Extract the job offer ID from the URL.
+        """
+        if id_offer_elem := soup.find(id="IdOffer"):
             return id_offer_elem.attrs.get("value")
         return None
 
     async def is_next_page_available(self) -> bool:
-        """Check if the next page is available."""
-        from crawl4ai import CrawlerRunConfig
-
+        """
+        Check if the next page is available.
+        """
         config_click_next = CrawlerRunConfig(session_id=self.session_id)
         result = await self.crawler.arun(url=self.url, config=config_click_next)
 
@@ -170,4 +172,4 @@ async def main_scraper(max_pages: int = 100, max_concurrent_browsers: int = 3):
 
 if __name__ == "__main__":
     # Run with default settings: max 100 pages, max 3 concurrent browsers
-    asyncio.run(main_scraper(max_pages=50))
+    asyncio.run(main_scraper(max_pages=50, max_concurrent_browsers=7))
