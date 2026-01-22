@@ -202,6 +202,45 @@ Results saved to: data/occ_job_offers_20260117_13_00.json
 Total offers scraped: 1,125
 ```
 
+## 🐳 Docker
+
+### Construcción y Ejecución
+
+```bash
+# Construir la imagen
+docker build -t general-crawler .
+
+# Ejecutar todos los scrapers
+docker-compose up
+
+# Ejecutar un scraper específico
+docker-compose run occ-scraper
+docker-compose run indeed-scraper
+docker-compose run compu-trabajo-scraper
+
+# Ejecutar pruebas
+docker-compose --profile test up test
+```
+
+### Servicios Disponibles
+
+- **scrapers**: Servicio base con entorno configurado
+- **occ-scraper**: Scraper específico para OCC.com.mx
+- **indeed-scraper**: Scraper específico para Indeed
+- **compu-trabajo-scraper**: Scraper específico para ComputTrabajo
+- **test**: Servicio para ejecutar pruebas unitarias
+
+### Variables de Entorno
+
+- `HEADLESS=true`: Ejecutar browser en modo headless
+- `LOG_LEVEL=INFO`: Nivel de logging
+- `PYTHONPATH=/app`: Path de Python en contenedor
+
+### Volúmenes
+
+- `./results:/app/results`: Almacenamiento de resultados
+- `./src:/app/src`: Código fuente para desarrollo
+
 ## 🚦 Estado del Proyecto
 
 - ✅ Sistema de mixins implementado
@@ -210,6 +249,7 @@ Total offers scraped: 1,125
 - ✅ Scrapers OCC y ComputTrabajo refactorizados
 - ✅ Extracción de detalles completos
 - ✅ Almacenamiento en JSON
+- ✅ Soporte Docker completo
 
 ## 📄 Licencia
 

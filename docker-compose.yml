@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # Servicio principal de scrapers
+  scrapers:
+    build: .
+    container_name: general-crawler
+    volumes:
+      - ./results:/app/results
+      - ./src:/app/src
+    environment:
+      - PYTHONPATH=/app
+      - HEADLESS=true
+      - LOG_LEVEL=INFO
+    networks:
+      - crawler-network
+    restart: unless-stopped
+    # Descomentar para modo interactivo
+    # stdin_open: true
+    # tty: true
+
+  # Servicio para OCC scraper
+  occ-scraper:
+    build: .
+    container_name: occ-scraper
+    command: uv run python -m src.job.occ.scraper
+    volumes:
+      - ./results:/app/results
+      - ./src:/app/src
+    environment:
+      - PYTHONPATH=/app
+      - HEADLESS=true
+      - LOG_LEVEL=INFO
+    networks:
+      - crawler-network
+    depends_on:
+      - scrapers
+    restart: "no"
+
+  # Servicio para Indeed scraper
+  indeed-scraper:
+    build: .
+    container_name: indeed-scraper
+    command: uv run python -m src.job.indeed
+    volumes:
+      - ./results:/app/results
+      - ./src:/app/src
+    environment:
+      - PYTHONPATH=/app
+      - HEADLESS=true
+      - LOG_LEVEL=INFO
+    networks:
+      - crawler-network
+    depends_on:
+      - scrapers
+    restart: "no"
+
+  # Servicio para CompuTrabajo scraper
+  compu-trabajo-scraper:
+    build: .
+    container_name: compu-trabajo-scraper
+    command: uv run python -m src.job.compu_trabajo.scraper
+    volumes:
+      - ./results:/app/results
+      - ./src:/app/src
+    environment:
+      - PYTHONPATH=/app
+      - HEADLESS=true
+      - LOG_LEVEL=INFO
+    networks:
+      - crawler-network
+    depends_on:
+      - scrapers
+    restart: "no"
+
+  # Servicio de pruebas
+  test:
+    build: .
+    container_name: crawler-test
+    command: uv run pytest test/ -v
+    volumes:
+      - ./test:/app/test
+      - ./src:/app/src
+    environment:
+      - PYTHONPATH=/app
+    networks:
+      - crawler-network
+    profiles:
+      - test
+    restart: "no"
+
+networks:
+  crawler-network:
+    driver: bridge
+
+volumes:
+  results:
+    driver: local

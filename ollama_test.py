@@ -103,7 +103,7 @@ def job_template(job: ScrapedJobOfferSchema) -> str:
     return f"""
     Con la descripcion y los requerimientos, resume la siguiente oferta laboral, ignora en nombre de la empresa, mision, vison etc. 
     lo que importa es Tecnologías necesarias, tipo de trabajo (remoto, presencial etc). Retorna la informacion en formato JSON (string)
-    con la siguiente estructura:
+    con la siguiente esquema:
     
     ```json
     {schema}
