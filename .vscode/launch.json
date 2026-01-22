@@ -54,6 +54,19 @@
       }
     },
     {
+      "name": "[PROJECT] INDEED",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/job/indeed/scraper.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    },
+    {
       "name": "[PROJECT] FastAPI",
       "type": "debugpy",
       "request": "launch",
