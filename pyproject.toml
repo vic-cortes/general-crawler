@@ -8,6 +8,7 @@ dependencies = [
     "bs4>=0.0.2",
     "crawl4ai>=0.7.3",
     "ollama>=0.6.1",
+    "opencode-ai>=0.1.0a36",
 ]
 
 [dependency-groups]
