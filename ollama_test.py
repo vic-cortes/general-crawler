@@ -21,16 +21,22 @@ class ExperienceSchema(BaseModel):
 
 class SalarySchema(BaseModel):
     amount: float | None
-    currency: (
-        Literal["USD", "EUR", "GBP", "JPY", "CNY", "INR", "MXN", "BRL", "ARS"] | None
-    ) = "MXN"
+    currency: Literal["USD", "EUR", "GBP", "JPY", "CNY", "INR", "MXN", "BRL", "ARS"] = (
+        "MXN"
+    )
     period: Literal["monthly", "yearly", "weekly", "daily", "hourly"] | None
+
+
+class ProgrammingLanguageSchema(BaseModel):
+    name: str | None = None
+    level: Literal["beginner", "intermediate", "advanced", "expert"] | None = None
+    libraries: List[str] | None = None
 
 
 class TechnologiesSchema(BaseModel):
     cloud: List[str] | None
     frameworks: List[str] | None
-    languages: List[str] | None
+    programming_languages: List[ProgrammingLanguageSchema] | None
     databases: List[str] | None
     big_data: List[str] | None
     architectures: List[str] | None
@@ -47,8 +53,10 @@ class WorkModeSchema(BaseModel):
 class LanguageSchema(BaseModel):
     name: (
         Literal["English", "Spanish", "French", "German", "Chinese", "Japanese"] | None
-    )
-    proficiency_level: Literal["native", "A1", "A2", "B1", "B2", "C1", "C2"] | None
+    ) = None
+    language_proficiency_level: (
+        Literal["native", "A1", "A2", "B1", "B2", "C1", "C2"] | None
+    ) = None
 
 
 class JobOfferSchema(BaseModel):
@@ -58,7 +66,7 @@ class JobOfferSchema(BaseModel):
     technologies: TechnologiesSchema
     experience_required: ExperienceSchema
     skills: List[str]
-    languages: List[LanguageSchema]
+    foreign_languages: List[LanguageSchema]
 
 
 def parse_llm_response_to_json(response_content: str) -> JobOfferSchema | dict:
@@ -118,6 +126,8 @@ def job_template(job: ScrapedJobOfferSchema) -> str:
     """
 
 
+# Create and empty file and write each resulting JSON on a new line
+
 for job in data:
     current_job = ScrapedJobOfferSchema.model_validate(job)
     job_prompt = job_template(current_job)
@@ -139,4 +149,8 @@ for job in data:
         else {}
     )
     print("\n" + final_data)
+
+    with open("compu_trabajo_job_offers_llm_parsed.jsonl", "a", encoding="utf-8") as f:
+        f.write(final_data + "\n")
+
     job["llm_parsed"] = final_data
