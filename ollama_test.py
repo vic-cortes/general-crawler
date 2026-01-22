@@ -1,5 +1,5 @@
 import json
-from typing import List
+from typing import List, Literal
 
 from ollama import ChatResponse
 from ollama import chat as ollama_chat
@@ -19,6 +19,14 @@ class ExperienceSchema(BaseModel):
     areas: List[str]
 
 
+class SalarySchema(BaseModel):
+    amount: float | None
+    currency: (
+        Literal["USD", "EUR", "GBP", "JPY", "CNY", "INR", "MXN", "BRL", "ARS"] | None
+    ) = "MXN"
+    period: Literal["monthly", "yearly", "weekly", "daily", "hourly"] | None
+
+
 class TechnologiesSchema(BaseModel):
     cloud: List[str] | None
     frameworks: List[str] | None
@@ -30,10 +38,17 @@ class TechnologiesSchema(BaseModel):
 
 
 class WorkModeSchema(BaseModel):
-    type: str
-    on_site_days_per_week: int
-    location: str
-    salary: float | None
+    mode: Literal["remote", "onsite", "hybrid"] | None
+    on_site_days_per_week: int | None
+    location: str | None
+    salary: SalarySchema | None
+
+
+class LanguageSchema(BaseModel):
+    name: (
+        Literal["English", "Spanish", "French", "German", "Chinese", "Japanese"] | None
+    )
+    proficiency_level: Literal["native", "A1", "A2", "B1", "B2", "C1", "C2"] | None
 
 
 class JobOfferSchema(BaseModel):
@@ -43,22 +58,38 @@ class JobOfferSchema(BaseModel):
     technologies: TechnologiesSchema
     experience_required: ExperienceSchema
     skills: List[str]
+    languages: List[LanguageSchema]
 
 
-def parse_llm_response_to_json(response_content: str) -> dict:
+def parse_llm_response_to_json(response_content: str) -> JobOfferSchema | dict:
     """Parse the LLM response content to a JSON dictionary."""
     try:
         # Clean the response content
         cleaned_content = response_content.replace("```json\n", "").rstrip("```\n")
         # Parse the cleaned content to a JSON object
         json_data = json.loads(cleaned_content)
-        return json_data
+        return JobOfferSchema.model_validate(json_data)
     except json.JSONDecodeError as e:
         print("Error decoding JSON:", e)
         return {}
 
 
-def job_template(description: str, requirements: str) -> str:
+class DetailsSchema(BaseModel):
+    description: str
+    requirements: str
+    salary: str | None = None
+    time: str | None = None
+
+
+class ScrapedJobOfferSchema(BaseModel):
+    title: str
+    company: str
+    location: str
+    relative_date: str
+    details: DetailsSchema
+
+
+def job_template(job: ScrapedJobOfferSchema) -> str:
     schema = JobOfferSchema.model_json_schema()
 
     return f"""
@@ -71,19 +102,25 @@ def job_template(description: str, requirements: str) -> str:
     ```
 
     <description>
-        {description}
+        {job.details.description}
     </description>
 
     <requirements>
-        {requirements}
+        {job.details.requirements}
     </requirements>
+
+    <metadata>
+        {job.details.salary}
+    </metadata>
+
+    Si por alguna razon no viene algun campo en la descripcion o requerimiento trata de inferirlo. Todos los campos
+    deben ser traducidos al ingles.
     """
 
 
 for job in data:
-    description = job["details"]["description"]
-    requirements = job["details"]["requirements"]
-    job_prompt = job_template(description, requirements)
+    current_job = ScrapedJobOfferSchema.model_validate(job)
+    job_prompt = job_template(current_job)
 
     response: ChatResponse = ollama_chat(
         model="gemma3",
@@ -94,6 +131,12 @@ for job in data:
             },
         ],
     )
-    print(response["message"]["content"])
     # or access fields directly from the response object
-    job["llm_parsed"] = parse_llm_response_to_json(response.message.content)
+    parsed_data = parse_llm_response_to_json(response.message.content)
+    final_data = (
+        parsed_data.model_dump_json(exclude_none=True)
+        if isinstance(parsed_data, JobOfferSchema)
+        else {}
+    )
+    print("\n" + final_data)
+    job["llm_parsed"] = final_data
