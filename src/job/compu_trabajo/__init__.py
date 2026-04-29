@@ -1,9 +1,7 @@
-from .scraper import Scraper as CompuTrabajoScraper
-from .utils import DateConverter as CompuTrabajoDateConverter
-from .utils import SalaryConverter as CompuTrabajoSalaryConverter
+from .scraper import CompuTrabajoConcurrentScraper, CompuTrabajoScraper, main_scraper
 
 __all__ = [
     "CompuTrabajoScraper",
-    "CompuTrabajoDateConverter",
-    "CompuTrabajoSalaryConverter",
+    "main_scraper",
+    "CompuTrabajoConcurrentScraper",
 ]

@@ -6,7 +6,7 @@ from crawl4ai import CrawlerRunConfig
 from src.job.mixins import BaseScraper, ConcurrentScraperMixin
 
 BASE_URL = "https://mx.computrabajo.com"
-JOB_URL = f"{BASE_URL}/trabajo-de-python"
+JOB_URL = f"{BASE_URL}/empleos-en-acuna"
 KEY_CSS_SELECTOR = "#offersGridOfferContainer"
 DETAIL_CSS_SELECTOR = "div.box_detail"
 DETAIL_ICONS = {
@@ -20,7 +20,7 @@ DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 BASE_SELECTOR = "article.box_offer"
 
 
-class ComputTrabajoScraper(BaseScraper):
+class CompuTrabajoScraper(BaseScraper):
     """
     Scraper específico para ComputTrabajo.com
     """
@@ -140,7 +140,7 @@ class ComputTrabajoScraper(BaseScraper):
         return bool(offers_container and soup.select("article.box_offer"))
 
 
-class ComputTrabajoConcurrentScraper(ConcurrentScraperMixin):
+class CompuTrabajoConcurrentScraper(ConcurrentScraperMixin):
     """
     Scraper concurrente para ComputTrabajo usando el mixin.
     """
@@ -155,7 +155,7 @@ class ComputTrabajoConcurrentScraper(ConcurrentScraperMixin):
             max_concurrent_browsers: Número máximo de browsers concurrentes
         """
         await cls.main_scraper(
-            scraper_class=ComputTrabajoScraper,
+            scraper_class=CompuTrabajoScraper,
             base_job_url=JOB_URL,
             url_pattern=f"{JOB_URL}?p={{page_num}}",
             max_pages=max_pages,
@@ -167,7 +167,7 @@ async def main_scraper(max_pages: int = 100, max_concurrent_browsers: int = 3):
     """
     Función principal de scraping para mantener compatibilidad.
     """
-    await ComputTrabajoConcurrentScraper.run(max_pages, max_concurrent_browsers)
+    await CompuTrabajoConcurrentScraper.run(max_pages, max_concurrent_browsers)
 
 
 if __name__ == "__main__":

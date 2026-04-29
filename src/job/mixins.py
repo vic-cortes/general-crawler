@@ -292,9 +292,7 @@ class ConcurrentScraperMixin:
             if isinstance(result, Exception):
                 print(f"Page {page_num} failed with exception: {result}")
             elif result is None:
-                print(f"Page {page_num} returned None (likely no more pages)")
-                # Detener procesamiento cuando llegamos a None
-                break
+                print(f"Page {page_num} returned None")
             elif isinstance(result, list):
                 all_offers.extend(result)
                 successful_pages += 1

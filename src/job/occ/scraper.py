@@ -87,7 +87,7 @@ class OCCScraper(BaseScraper):
         description_tag = [el for el in all_ps if DESCRIPTION in el.text.lower()]
 
         if not description_tag:
-            return {}
+            return None
 
         description_tag = description_tag[0]
         return description_tag.parent.text.strip()
