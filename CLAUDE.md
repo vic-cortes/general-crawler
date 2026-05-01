@@ -4,48 +4,46 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Python-based general web crawler focused on job scraping from multiple job boards. The project uses crawl4ai as the core web crawling framework with async support and CSS-based extraction strategies.
-
-## Architecture
-
-- **Main modules**: Located in `src/` with job-specific scrapers in `src/job/`
-- **Job scrapers**: Each job board (Indeed, OCC, Computrabajo) has its own module with dedicated scrapers
-- **Browser config**: Centralized in `src/config.py` using Firefox with headless mode configurable
-- **Data utilities**: Date conversion and parsing utilities in `src/utils.py` for handling Spanish date formats
-- **Output**: JSON extraction using CSS selectors with standardized field schemas
+Python-based web crawler for scraping job listings from multiple job boards (OCC, CompuTrabajo, Indeed). Uses `crawl4ai` as the async browser automation framework with CSS-based structured extraction.
 
 ## Development Commands
 
-### Setup
-- Install Firefox driver for Playwright: `make install_firefox_driver`
-- Format code: `make format` (uses ruff)
+```bash
+uv sync                          # Install dependencies
+make install_firefox_driver      # Install Playwright Firefox driver (if needed)
+uv run pytest                    # Run all tests
+uv run pytest test/test_utils.py::test_function_name  # Single test
+uv run ruff check --fix .        # Format and lint
+uv run python src/job/occ/scraper.py  # Run a scraper directly
+```
 
-### Testing
-- Run tests: `uv run pytest`
-- Run specific test: `uv run pytest test/test_utils.py`
+## Scraper Architecture
 
-### Linting/Formatting
-- Format and fix code: `uv run ruff check --fix .`
-- Check code: `uv run ruff check .`
+Each job board lives in its own package under `src/job/<board>/scraper.py`. The class hierarchy is:
 
-### Running the project
-- This project uses `uv` for dependency management
-- Run Python scripts with: `uv run python <script>`
+```
+BaseScraperSetup (ABC)   — defines abstract properties: service_name, base_selector, key_css_selector, _output_schema()
+AsyncScraperMixin        — provides _get_overview(), _get_details(), get_data()
+BaseScraper (dataclass)  — combines both; takes url + crawler as constructor args
+ConcurrentScraperMixin   — adds scrape_page() + main_scraper() for multi-browser parallel runs
+```
 
-## Key Technical Details
+To add a new job board:
+1. Create `src/job/<board>/scraper.py` with a class extending `BaseScraper`
+2. Implement all abstract properties and `get_job_details()`, `_get_offer_id()`, `is_next_page_available()`
+3. Add a `ConcurrentScraper` class extending `ConcurrentScraperMixin` with a `run()` classmethod
 
-### Scraper Architecture
-- Each job board scraper extends a base pattern with URL configuration, CSS selectors, and output schemas
-- Uses `JsonCssExtractionStrategy` for structured data extraction
-- Implements detail page scraping for additional job information
-- Date parsing handles relative dates ("hace 2 días") and Spanish month names
+### Data flow
+1. `ConcurrentScraperMixin.main_scraper()` spawns N concurrent browsers via `asyncio.Semaphore`
+2. Each browser calls `_get_overview()` using `JsonCssExtractionStrategy` (CSS-driven JSON extraction)
+3. For each overview item, `_get_details()` clicks the listing and parses the detail panel with BeautifulSoup
+4. Results are saved as `data/<service_name>_job_offers_<YYYYMMDD_HH_00>.json`
 
-### Browser Configuration
-- Default browser: Firefox (non-headless mode)
-- Browser config centralized in `src/config.py`
-- Uses crawl4ai's `BrowserConfig` and `AsyncWebCrawler`
+### Key files
+- `src/config.py` — `BrowserConfig` (Chromium, headless) and `DATA_PATH`
+- `src/job/mixins.py` — all base/mixin classes
+- `src/utils.py` — `DateConverter` for Spanish relative dates ("hace 2 días", "ayer", month names)
+- `src/job/common/` — shared constants and utilities
 
-### Data Processing
-- `DateConverter` class handles Spanish date formats and relative dates
-- Standardized output format across all scrapers
-- JSON output with consistent field naming (title, company, location, etc.)
+### Output schema fields
+Each scraper defines its own `_output_schema()` returning a `JsonCssExtractionStrategy`-compatible dict. Standard fields across boards: `title`, `company`, `location`, `relative_date`, `description`. Detail fields (added by `get_job_details()`): `job_url`, `salary`, `requirements`, `offer_id`, `current_datetime`.
