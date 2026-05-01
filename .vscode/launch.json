@@ -100,10 +100,10 @@
       }
     },
     {
-      "name": "[OLLAMA] testing",
+      "name": "[LLM] testing",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/ollama_test.py",
+      "program": "${workspaceFolder}/llm_test.py",
       "console": "integratedTerminal",
       "justMyCode": true,
       "python": "${workspaceFolder}/.venv/bin/python",

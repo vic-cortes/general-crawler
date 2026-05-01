@@ -1,14 +1,23 @@
 import json
+import os
 from typing import List, Literal
 
-from ollama import ChatResponse
-from ollama import chat as ollama_chat
+from openai import OpenAI
 from pydantic import BaseModel
 
-from config import DATA_PATH
+from dotenv import load_dotenv
+
+from config import DATA_PATH, Config
+
+load_dotenv()
+
+client = OpenAI(
+    api_key=Config.DEEP_SEEK_API_KEY,
+    base_url="https://api.deepseek.com",
+)
 
 # load computrabajo files
-file = DATA_PATH / "compu_trabajo_job_offers_20260120_23_00.json"
+file = DATA_PATH / "occ_job_offers_20260501_09_00.json"
 
 with open(file, "r", encoding="utf-8") as f:
     data = json.load(f)
@@ -83,8 +92,8 @@ def parse_llm_response_to_json(response_content: str) -> JobOfferSchema | dict:
 
 
 class DetailsSchema(BaseModel):
-    description: str
-    requirements: str
+    description: str | None = None
+    requirements: str | None = None
     salary: str | None = None
     time: str | None = None
 
@@ -132,8 +141,8 @@ for job in data:
     current_job = ScrapedJobOfferSchema.model_validate(job)
     job_prompt = job_template(current_job)
 
-    response: ChatResponse = ollama_chat(
-        model="gemma3",
+    response = client.chat.completions.create(
+        model="deepseek-v4-flash",
         messages=[
             {
                 "role": "user",
@@ -141,8 +150,7 @@ for job in data:
             },
         ],
     )
-    # or access fields directly from the response object
-    parsed_data = parse_llm_response_to_json(response.message.content)
+    parsed_data = parse_llm_response_to_json(response.choices[0].message.content)
     final_data = (
         parsed_data.model_dump_json(exclude_none=True)
         if isinstance(parsed_data, JobOfferSchema)
@@ -150,7 +158,7 @@ for job in data:
     )
     print("\n" + final_data)
 
-    with open("compu_trabajo_job_offers_llm_parsed.jsonl", "a", encoding="utf-8") as f:
+    with open("occ_job_offers_llm_parsed.jsonl", "a", encoding="utf-8") as f:
         f.write(final_data + "\n")
 
     job["llm_parsed"] = final_data
