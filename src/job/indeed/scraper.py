@@ -4,9 +4,9 @@ import re
 from datetime import datetime
 
 from bs4 import BeautifulSoup
-from crawl4ai import CrawlerRunConfig
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 
-from src.config import DATA_PATH
+from src.config import DATA_PATH, browser_config
 from src.job.mixins import BaseScraper, ConcurrentScraperMixin
 
 INDEED_BASE_URL = "https://mx.indeed.com"
@@ -14,7 +14,6 @@ KEY_CSS_SELECTOR = "#mosaic-provider-jobcards"
 DETAIL_CSS_SELECTOR = ".jobsearch-ViewJobLayout--embedded"
 BASE_SELECTOR = "div.job_seen_beacon"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-RESULTS_PER_PAGE = 10
 
 
 class IndeedScraper(BaseScraper):
@@ -60,7 +59,7 @@ class IndeedScraper(BaseScraper):
                 },
                 {
                     "name": "salary",
-                    "selector": "[data-testid='attribute_snippet_testid']",
+                    "selector": "li.salary-snippet-container",
                     "type": "text",
                 },
                 {
@@ -112,17 +111,51 @@ class IndeedScraper(BaseScraper):
         return None
 
     async def is_next_page_available(self) -> bool:
-        """Check if the next page is available."""
+        """Check if the current page has job cards (i.e. is a valid results page)."""
         config = CrawlerRunConfig(session_id=self.session_id)
         result = await self.crawler.arun(url=self.url, config=config)
         soup = BeautifulSoup(result.html, "html.parser")
-        return bool(soup.select_one("a[data-testid='pagination-page-next']"))
+        return bool(soup.select(BASE_SELECTOR))
+
+    @staticmethod
+    def extract_pagination_urls(soup: BeautifulSoup) -> list[str]:
+        """Extract all page URLs from the pagination bar, excluding current and next arrows."""
+        urls = []
+        for a in soup.select("a[data-testid^='pagination-page-']"):
+            testid = a.get("data-testid", "")
+            if testid in ("pagination-page-current", "pagination-page-next"):
+                continue
+            href = a.get("href", "")
+            if not href:
+                continue
+            if href.startswith("/"):
+                href = f"{INDEED_BASE_URL}{href}"
+            if href not in urls:
+                urls.append(href)
+        return urls
 
 
 class IndeedConcurrentScraper(ConcurrentScraperMixin):
     """
     Scraper concurrente para Indeed usando el mixin.
     """
+
+    @classmethod
+    async def _discover_page_urls(cls, base_url: str, max_pages: int) -> list[str]:
+        """
+        Fetch page 1 to extract the real pagination URLs Indeed provides.
+        Returns a list starting with base_url followed by the paginated hrefs.
+        """
+        async with AsyncWebCrawler(config=browser_config) as crawler:
+            result = await crawler.arun(
+                url=base_url,
+                config=CrawlerRunConfig(
+                    wait_for=KEY_CSS_SELECTOR, wait_for_timeout=5_000
+                ),
+            )
+            soup = BeautifulSoup(result.html, "html.parser")
+            page_urls = [base_url] + IndeedScraper.extract_pagination_urls(soup)
+            return page_urls[:max_pages]
 
     @classmethod
     async def run(
@@ -135,8 +168,8 @@ class IndeedConcurrentScraper(ConcurrentScraperMixin):
         """
         Ejecuta el scraping concurrente de Indeed.
 
-        Indeed usa paginación por offset (start=0, 10, 20…) en lugar de número de página,
-        por lo que se construyen las URLs manualmente antes de llamar a scrape_page.
+        Primero descubre las URLs reales de paginación desde la página 1,
+        luego scrapeea todas las páginas encontradas en paralelo.
 
         Args:
             job_title: Término de búsqueda de trabajo
@@ -149,13 +182,16 @@ class IndeedConcurrentScraper(ConcurrentScraperMixin):
             f"?q={job_title.replace(' ', '+')}"
             f"&l={location.replace(' ', '+')}"
         )
-        semaphore = asyncio.Semaphore(max_concurrent_browsers)
 
-        tasks = [cls.scrape_page(IndeedScraper, base_url, semaphore, 1)]
-        for page_num in range(2, max_pages + 1):
-            start = (page_num - 1) * RESULTS_PER_PAGE
-            page_url = f"{base_url}&start={start}"
-            tasks.append(cls.scrape_page(IndeedScraper, page_url, semaphore, page_num))
+        print("Discovering pagination URLs from page 1...")
+        page_urls = await cls._discover_page_urls(base_url, max_pages)
+        print(f"Found {len(page_urls)} page(s) to scrape")
+
+        semaphore = asyncio.Semaphore(max_concurrent_browsers)
+        tasks = [
+            cls.scrape_page(IndeedScraper, url, semaphore, i + 1)
+            for i, url in enumerate(page_urls)
+        ]
 
         print(
             f"Starting Indeed scraper with max {max_concurrent_browsers} concurrent browsers"
