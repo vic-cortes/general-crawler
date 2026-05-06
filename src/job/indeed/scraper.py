@@ -1,155 +1,211 @@
-# /// script
-# requires-python = ">=3.13"
-# dependencies = [
-#      "beautifulsoup4",
-#      "httpx",
-#      "random", # Added for random delays
-#      "time",   # Added for random delays
-# ]
-# ///
+import asyncio
+import json
+import re
+from datetime import datetime
 
-from __future__ import annotations
-
-import random
-import time
-from collections.abc import Generator
-
-import httpx
 from bs4 import BeautifulSoup
+from crawl4ai import CrawlerRunConfig
 
-# --- CONFIGURATION ---
-# Base URL for Indeed job search (using the Mexican domain as an example)
-INDEED_BASE_URL = "https://www.indeed.com.mx/jobs?"
-# Indeed uses a 'start' parameter for pagination, where results are 10 per page.
+from src.config import DATA_PATH
+from src.job.mixins import BaseScraper, ConcurrentScraperMixin
+
+INDEED_BASE_URL = "https://mx.indeed.com"
+KEY_CSS_SELECTOR = "#mosaic-provider-jobcards"
+DETAIL_CSS_SELECTOR = ".jobsearch-ViewJobLayout--embedded"
+BASE_SELECTOR = "div.job_seen_beacon"
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 RESULTS_PER_PAGE = 10
-# Safety limit to prevent accidental infinite loops/excessive requests
-MAX_PAGES = 5
-
-# Crucial upgrade: Mimic a real web browser to avoid immediate blocking.
-# This set of headers is vital for a robust, stealthy scraping effort.
-DEFAULT_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-    "Accept-Language": "en-US,en;q=0.9,hi;q=0.8",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-    "Referer": "https://www.google.com/",  # Fakes a referrer link
-}
-# ---------------------
 
 
-def fetch_jobs(job_title: str, location: str) -> Generator[tuple[str, str, str]]:
+class IndeedScraper(BaseScraper):
     """
-    Fetches job listings from Indeed, handling pagination and mimicking human behavior.
-
-    Args:
-        job_title: The keyword search term (e.g., "Data Scientist").
-        location: The location to search in (e.g., "Bangalore").
-
-    Yields:
-        A tuple containing the job title, company name, and location of a job listing.
+    Scraper específico para Indeed.
     """
-    # URL-encode the search terms
-    q_encoded = job_title.replace(" ", "+")
-    l_encoded = location.replace(" ", "+")
 
-    current_offset = 0
-    total_jobs_scraped = 0
+    @property
+    def service_name(self) -> str:
+        return "indeed"
 
-    # Loop to handle pagination using the 'start' parameter
-    for page_num in range(MAX_PAGES):
-        search_url = (
-            f"{INDEED_BASE_URL}q={q_encoded}&l={l_encoded}&start={current_offset}"
+    @property
+    def base_selector(self) -> str:
+        return BASE_SELECTOR
+
+    @property
+    def key_css_selector(self) -> str:
+        return KEY_CSS_SELECTOR
+
+    @property
+    def detail_css_selector(self) -> str:
+        return DETAIL_CSS_SELECTOR
+
+    @property
+    def date_format(self) -> str:
+        return DATE_FORMAT
+
+    def _output_schema(self):
+        return {
+            "name": self.service_name + " Job Scraper",
+            "baseSelector": BASE_SELECTOR,
+            "fields": [
+                {"name": "title", "selector": "span[id^=jobTitle]", "type": "text"},
+                {
+                    "name": "company",
+                    "selector": "[data-testid='company-name']",
+                    "type": "text",
+                },
+                {
+                    "name": "location",
+                    "selector": "[data-testid='text-location']",
+                    "type": "text",
+                },
+                {
+                    "name": "salary",
+                    "selector": "[data-testid='attribute_snippet_testid']",
+                    "type": "text",
+                },
+                {
+                    "name": "job_key",
+                    "selector": "a.jcs-JobTitle",
+                    "type": "attribute",
+                    "attribute": "data-jk",
+                },
+            ],
+        }
+
+    def get_job_details(self, soup: BeautifulSoup) -> dict:
+        """Extract job details from the right-side detail panel."""
+        panel = soup.select_one(DETAIL_CSS_SELECTOR)
+        if not panel:
+            return {}
+
+        company_el = panel.select_one("[data-testid='inlineHeader-companyName']")
+        location_el = panel.select_one("[data-testid='inlineHeader-companyLocation']")
+        salary_el = panel.select_one(
+            "[data-testid='jobsearch-OtherJobDetailsContainer']"
         )
+        desc_el = panel.select_one("#jobDescriptionText")
+
+        job_url = None
+        for a in panel.select("a[href*='fromjk=']"):
+            match = re.search(r"fromjk=([a-zA-Z0-9]+)", a.get("href", ""))
+            if match:
+                job_url = f"{INDEED_BASE_URL}/viewjob?jk={match.group(1)}"
+                break
+
+        return {
+            "company": company_el.text.strip() if company_el else "",
+            "location": location_el.text.strip() if location_el else "",
+            "salary": salary_el.text.strip() if salary_el else "",
+            "description": desc_el.text.strip() if desc_el else "",
+            "job_url": job_url,
+        }
+
+    def _get_offer_id(self, soup: BeautifulSoup) -> str | None:
+        """Extract job offer ID from the detail panel company link."""
+        panel = soup.select_one(DETAIL_CSS_SELECTOR)
+        if not panel:
+            return None
+        for a in panel.select("a[href*='fromjk=']"):
+            match = re.search(r"fromjk=([a-zA-Z0-9]+)", a.get("href", ""))
+            if match:
+                return match.group(1)
+        return None
+
+    async def is_next_page_available(self) -> bool:
+        """Check if the next page is available."""
+        config = CrawlerRunConfig(session_id=self.session_id)
+        result = await self.crawler.arun(url=self.url, config=config)
+        soup = BeautifulSoup(result.html, "html.parser")
+        return bool(soup.select_one("a[data-testid='pagination-page-next']"))
+
+
+class IndeedConcurrentScraper(ConcurrentScraperMixin):
+    """
+    Scraper concurrente para Indeed usando el mixin.
+    """
+
+    @classmethod
+    async def run(
+        cls,
+        job_title: str = "python",
+        location: str = "Mexico",
+        max_pages: int = 100,
+        max_concurrent_browsers: int = 3,
+    ):
+        """
+        Ejecuta el scraping concurrente de Indeed.
+
+        Indeed usa paginación por offset (start=0, 10, 20…) en lugar de número de página,
+        por lo que se construyen las URLs manualmente antes de llamar a scrape_page.
+
+        Args:
+            job_title: Término de búsqueda de trabajo
+            location: Ubicación para la búsqueda
+            max_pages: Número máximo de páginas a scrapear
+            max_concurrent_browsers: Número máximo de browsers concurrentes
+        """
+        base_url = (
+            f"{INDEED_BASE_URL}/jobs"
+            f"?q={job_title.replace(' ', '+')}"
+            f"&l={location.replace(' ', '+')}"
+        )
+        semaphore = asyncio.Semaphore(max_concurrent_browsers)
+
+        tasks = [cls.scrape_page(IndeedScraper, base_url, semaphore, 1)]
+        for page_num in range(2, max_pages + 1):
+            start = (page_num - 1) * RESULTS_PER_PAGE
+            page_url = f"{base_url}&start={start}"
+            tasks.append(cls.scrape_page(IndeedScraper, page_url, semaphore, page_num))
 
         print(
-            f"\n--- Page {page_num + 1} | Offset {current_offset} | URL: {search_url} ---"
+            f"Starting Indeed scraper with max {max_concurrent_browsers} concurrent browsers"
+        )
+        print(f"Launching {len(tasks)} concurrent scraping tasks...")
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        all_offers = []
+        successful_pages = 0
+        for i, result in enumerate(results):
+            page_num = i + 1
+            if isinstance(result, Exception):
+                print(f"Page {page_num} failed with exception: {result}")
+            elif result is None:
+                print(f"Page {page_num} returned None")
+            elif isinstance(result, list):
+                all_offers.extend(result)
+                successful_pages += 1
+                print(f"Page {page_num}: added {len(result)} offers")
+
+        print(
+            f"Scraping completed. Processed {successful_pages} pages, "
+            f"found {len(all_offers)} total offers"
         )
 
-        # Implement polite scraping delay (REQUIRED for production)
-        if page_num > 0:
-            delay = random.uniform(2.0, 5.0)
-            print(f"Waiting for {delay:.2f} seconds to avoid rate limiting...")
-            time.sleep(delay)
+        if not all_offers:
+            print("No offers found. Exiting without creating file.")
+            return
 
-        try:
-            # Send request with custom headers
-            response = httpx.get(search_url, headers=DEFAULT_HEADERS, timeout=10)
-            response.raise_for_status()
-        except httpx.HTTPError as e:
-            # Handle HTTP errors (e.g., 404, 429 Too Many Requests)
-            print(f"HTTP Error fetching data on page {page_num + 1}: {e}")
-            break
-        except Exception as e:
-            # Catch other connection errors (e.g., DNS resolution, timeouts)
-            print(f"An unexpected error occurred: {e}")
-            break
+        current_time = datetime.now().strftime("%Y%m%d_%H_00")
+        file_name = DATA_PATH / f"indeed_job_offers_{current_time}.json"
+        with open(file_name, "w", encoding="utf-8") as f:
+            json.dump(all_offers, f, indent=4, ensure_ascii=False)
+        print(f"Results saved to: {file_name}")
+        print(f"Total offers scraped: {len(all_offers)}")
 
-        soup = BeautifulSoup(response.content, "html.parser")
 
-        # Resilient Selector: Targets the general job card structure
-        job_cards = soup.find_all(
-            "div",
-            class_=lambda x: x
-            and ("jobsearch-SerpJobCard" in x or "job_list_item" in x),
-        )
-
-        jobs_on_page = 0
-
-        for job in job_cards:
-            try:
-                # Extract job title
-                title_tag = job.find("a", attrs={"data-tn-element": "jobTitle"})
-                job_title_text = title_tag.text.strip() if title_tag else "N/A"
-
-                # Extract company name
-                company_tag = job.find("span", {"class": "company"})
-                company_name = company_tag.text.strip() if company_tag else "N/A"
-
-                # Extract location
-                location_tag = job.find("div", {"class": "location"}) or job.find(
-                    "span", {"class": "location"}
-                )
-                job_location = (
-                    location_tag.text.strip() if location_tag else location
-                )  # Use search location as fallback
-
-                if job_title_text != "N/A" and company_name != "N/A":
-                    yield job_title_text, company_name, job_location
-                    jobs_on_page += 1
-                    total_jobs_scraped += 1
-
-            except AttributeError:
-                # Safely skip corrupted or malformed entries
-                continue
-
-        # Logic for stopping pagination: If we didn't find any jobs, we've hit the end.
-        if jobs_on_page == 0 or jobs_on_page < RESULTS_PER_PAGE:
-            print(
-                f"Finished scraping: Found {jobs_on_page} results on this page, indicating end of listings or max pages reached."
-            )
-            break
-
-        # Prepare for the next page
-        current_offset += RESULTS_PER_PAGE
-
-    print(
-        f"\n[SUMMARY] Successfully scraped {total_jobs_scraped} jobs over {page_num + 1} pages."
+async def main_scraper(
+    job_title: str = "python",
+    location: str = "Mexico",
+    max_pages: int = 100,
+    max_concurrent_browsers: int = 3,
+):
+    """
+    Función principal de scraping para mantener compatibilidad.
+    """
+    await IndeedConcurrentScraper.run(
+        job_title, location, max_pages, max_concurrent_browsers
     )
 
 
 if __name__ == "__main__":
-    # --- Customize your search here ---
-    TITLE = "Python Developer"
-    LOCATION = "Remote"
-
-    print(f"--- STARTING ROBUST SCRAPE FOR: {TITLE} in {LOCATION} ---")
-
-    jobs_found = list(fetch_jobs(TITLE, LOCATION))
-
-    print("\n--- FINAL RESULTS (Top 50 Jobs) ---")
-    if jobs_found:
-        for i, job in enumerate(jobs_found, 1):
-            title, company, loc = job
-            print(f"Job {i:>3}: {title} at {company} ({loc})")
-    else:
-        print("No jobs found or an error occurred. Check the logs above.")
+    asyncio.run(main_scraper(max_pages=50, max_concurrent_browsers=7))
