@@ -110,28 +110,31 @@ def job_template(job: ScrapedJobOfferSchema) -> str:
     schema = JobOfferSchema.model_json_schema()
 
     return f"""
-    Con la descripcion y los requerimientos, resume la siguiente oferta laboral, ignora en nombre de la empresa, mision, vison etc. 
-    lo que importa es Tecnologías necesarias, tipo de trabajo (remoto, presencial etc). Retorna la informacion en formato JSON (string)
-    con la siguiente esquema:
-    
-    ```json
-    {schema}
-    ```
+        ### Role
+        Act as a precise IT Recruitment Data Analyst. Your goal is to parse job descriptions into a structured JSON that adheres strictly to a provided Pydantic schema.
 
-    <description>
-        {job.details.description}
-    </description>
+        ### Strict Constraints
+        1. **Output Format:** Return ONLY the raw JSON string. No markdown blocks, no "Here is your JSON", no explanations.
+        2. **Language:** Translate all extracted text values to **English**, except for proper technology names.
+        3. **Data Integrity:**
+            - **Enums:** You MUST use only the values defined in the schema (e.g., `WorkMode` must be exactly "remote", "onsite", or "hybrid").
+            - **Currency:** Default to "MXN" unless specified. Use only valid codes: [USD, EUR, GBP, JPY, CNY, INR, MXN, BRL, ARS].
+            - **Proficiency:** Use only [native, A1, A2, B1, B2, C1, C2].
+        4. **Noise Filtering:** Ignore company history, perks (coffee, gym), and non-technical marketing text.
 
-    <requirements>
-        {job.details.requirements}
-    </requirements>
+        ### Inference & Nulls
+        - If a field is missing (e.g., salary amount), attempt to infer it from context.
+        - If inferred, add a clear note in the `others` array under `technologies` or a relevant `skills` entry stating: "[Inferred]: field_name".
+        - If a field is not present and cannot be inferred, set it to `null`.
+        - For `on_site_days_per_week`, if the mode is "remote", set to 0. If "onsite", set to 5.
 
-    <metadata>
-        {job.details.salary}
-    </metadata>
+        ### Input Data
+        - **Description:** {job.details.description}
+        - **Requirements:** {job.details.requirements}
+        - **Metadata:** {job.details.salary}
 
-    Si por alguna razon no viene algun campo en la descripcion o requerimiento trata de inferirlo. Todos los campos
-    deben ser traducidos al ingles.
+        ### Target Schema (JSON Schema)
+        {schema}
     """
 
 
