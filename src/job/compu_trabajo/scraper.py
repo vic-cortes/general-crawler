@@ -6,7 +6,7 @@ from crawl4ai import CrawlerRunConfig
 from src.job.mixins import BaseScraper, ConcurrentScraperMixin
 
 BASE_URL = "https://mx.computrabajo.com"
-JOB_URL = f"{BASE_URL}/empleos-en-acuna"
+JOB_URL = f"{BASE_URL}/trabajo-de-python"
 KEY_CSS_SELECTOR = "#offersGridOfferContainer"
 DETAIL_CSS_SELECTOR = "div.box_detail"
 DETAIL_ICONS = {

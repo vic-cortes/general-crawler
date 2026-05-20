@@ -6,7 +6,7 @@ from src.job.mixins import BaseScraper, ConcurrentScraperMixin
 
 BASE_URL = "https://www.occ.com.mx"
 JOB_URL = f"{BASE_URL}/empleos/de-python/"
-KEY_CSS_SELECTOR = "aside.col-span-12"
+KEY_CSS_SELECTOR = "div.card-job-offer"
 DETAIL_CSS_SELECTOR = "#job-detail-container"
 DETAIL_ICONS = {
     "i_clock": "time",
@@ -16,7 +16,7 @@ DETAIL_ICONS = {
     "i_home": "place",
 }
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-BASE_SELECTOR = "div.bg-bg-surface-default"
+BASE_SELECTOR = "div.card-job-offer"
 
 
 class OCCScraper(BaseScraper):
@@ -47,7 +47,7 @@ class OCCScraper(BaseScraper):
     def _output_schema(self):
         return {
             "name": self.service_name + " Job Scraper",
-            "baseSelector": BASE_SELECTOR,
+            "baseSelector": self.base_selector,
             "fields": [
                 {"name": "title", "selector": "h2.text-grey-900", "type": "text"},
                 {
@@ -149,8 +149,7 @@ class OCCScraper(BaseScraper):
         result = await self.crawler.arun(url=self.url, config=config_click_next)
 
         soup = BeautifulSoup(result.html, "html.parser")
-        next_page_button = soup.select_one("#btn-next-offer")
-        return bool(next_page_button)
+        return bool(soup.select(self.base_selector))
 
 
 class OCCConcurrentScraper(ConcurrentScraperMixin):
