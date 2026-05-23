@@ -4,12 +4,12 @@ import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import ComparisonView from './components/ComparisonView';
 import { AppRoute, JobOffer } from './types';
-import { MOCK_OFFERS } from './services/mockData';
+import { REAL_OFFERS } from './services/realData';
 
 const App: React.FC = () => {
   const [activeRoute, setActiveRoute] = useState<AppRoute>(AppRoute.DASHBOARD);
   const [selectedForCompare, setSelectedForCompare] = useState<JobOffer[]>([]);
-  const [allOffers] = useState<JobOffer[]>(MOCK_OFFERS);
+  const [allOffers] = useState<JobOffer[]>(REAL_OFFERS);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('theme');
