@@ -1,0 +1,746 @@
+[
+  {
+    "position": "Backend Developer",
+    "work_mode": {
+      "mode": "onsite",
+      "on_site_days_per_week": 5,
+      "location": "Merida Yucatan",
+      "salary": { "amount": 30000.0, "currency": "MXN", "period": "monthly" }
+    },
+    "job_type": ["Full-time"],
+    "technologies": {
+      "programming_languages": [
+        { "name": "Python" },
+        { "name": "Java" },
+        { "name": "C" },
+        { "name": "C++" },
+        { "name": "Rust" }
+      ],
+      "databases": ["Redis", "Memcached"],
+      "others": ["Linux", "Docker"]
+    },
+    "experience_required": {
+      "minimum_years": 2,
+      "areas": ["Backend Development"]
+    },
+    "skills": [
+      "Asynchronous Programming",
+      "Low-level Networking",
+      "Data Structures & Algorithms",
+      "Linux",
+      "Docker",
+      "Redis/Memcached",
+      "Connection Pooling"
+    ],
+    "foreign_languages": []
+  },
+  {
+    "position": "Senior Python Developer",
+    "work_mode": { "mode": "hybrid", "location": "CDMX or Estado de Mexico" },
+    "job_type": ["Full-time"],
+    "technologies": {
+      "programming_languages": [{ "name": "Python" }],
+      "databases": ["PostgreSQL"],
+      "architectures": ["Microservices"],
+      "others": ["SCRUM", "OWASP", "JWT"]
+    },
+    "experience_required": {
+      "minimum_years": 5,
+      "areas": ["Backend Development"]
+    },
+    "skills": [
+      "Microservices Architecture",
+      "API Design",
+      "PostgreSQL Optimization",
+      "Big Data Handling",
+      "Security (JWT, OWASP)",
+      "Code Review",
+      "Technical Mentoring"
+    ],
+    "foreign_languages": []
+  },
+  {
+    "position": "Odoo Developer",
+    "work_mode": {
+      "mode": "onsite",
+      "on_site_days_per_week": 5,
+      "salary": { "amount": 30000.0, "currency": "MXN", "period": "monthly" }
+    },
+    "job_type": ["Full-time"],
+    "technologies": {
+      "frameworks": ["Odoo"],
+      "programming_languages": [{ "name": "Python" }],
+      "databases": ["PostgreSQL"],
+      "others": [
+        "Linux",
+        "Docker",
+        "Nginx",
+        "Shopify",
+        "REST API",
+        "JSON",
+        "[Inferred]: language_proficiency_level"
+      ]
+    },
+    "experience_required": {
+      "minimum_years": 3,
+      "areas": ["Odoo Development"]
+    },
+    "skills": [
+      "Odoo Implementation",
+      "Python Development",
+      "API Integration",
+      "Process Automation",
+      "Server Administration (Linux, Docker)",
+      "Quality Assurance",
+      "User Training",
+      "Report Generation"
+    ],
+    "foreign_languages": [
+      { "name": "English", "language_proficiency_level": "B2" }
+    ]
+  },
+  {
+    "position": "Python Developer",
+    "work_mode": { "mode": "hybrid" },
+    "job_type": ["Full-time"],
+    "technologies": {
+      "cloud": ["AWS", "Azure", "GCP"],
+      "frameworks": ["Django", "Flask", "FastAPI"],
+      "programming_languages": [{ "name": "Python" }],
+      "databases": ["PostgreSQL", "MySQL", "MongoDB"],
+      "architectures": ["Microservices"],
+      "others": ["Git", "Docker", "Machine Learning", "ETL", "REST API"]
+    },
+    "experience_required": {
+      "minimum_years": 0,
+      "areas": ["Backend Development"]
+    },
+    "skills": [
+      "Backend Development",
+      "RESTful APIs",
+      "Data Pipelines",
+      "ETL",
+      "Database Management (SQL and NoSQL)",
+      "Git",
+      "Cloud Computing (AWS/Azure/GCP)",
+      "Docker",
+      "Microservices",
+      "Machine Learning",
+      "Problem Solving",
+      "Proactivity",
+      "Autonomy",
+      "Continuous Learning"
+    ],
+    "foreign_languages": []
+  },
+  {
+    "position": "Python Developer",
+    "work_mode": {
+      "mode": "onsite",
+      "on_site_days_per_week": 5,
+      "salary": { "amount": 32000.0, "currency": "MXN", "period": "monthly" }
+    },
+    "job_type": ["Full-time"],
+    "technologies": {
+      "programming_languages": [{ "name": "Python", "level": "advanced" }],
+      "others": ["Windows Server", "Linux", "API"]
+    },
+    "experience_required": {
+      "minimum_years": 2,
+      "areas": ["Python Development"]
+    },
+    "skills": [
+      "Advanced Python",
+      "Database Management",
+      "API Integration",
+      "Windows Server",
+      "Linux",
+      "Incident Analysis and Resolution",
+      "New Implementations",
+      "System Maintenance",
+      "Problem Solving"
+    ],
+    "foreign_languages": []
+  },
+  {
+    "position": "Python and Java Developer",
+    "work_mode": {
+      "mode": "hybrid",
+      "on_site_days_per_week": 3,
+      "location": "Toluca",
+      "salary": { "amount": 40000.0, "currency": "MXN", "period": "monthly" }
+    },
+    "job_type": ["Full-time"],
+    "technologies": {
+      "cloud": ["Docker", "Kubernetes"],
+      "programming_languages": [{ "name": "Python" }, { "name": "Java" }],
+      "databases": ["SQL"],
+      "architectures": ["REST", "CI/CD"],
+      "others": ["[Inferred]: English proficiency level"]
+    },
+    "experience_required": {
+      "minimum_years": 4,
+      "areas": ["Backend Development"]
+    },
+    "skills": [
+      "REST APIs",
+      "SQL",
+      "Git",
+      "Agile methodologies",
+      "Automation",
+      "Debugging",
+      "Teamwork",
+      "Communication"
+    ],
+    "foreign_languages": [
+      { "name": "English", "language_proficiency_level": "B1" }
+    ]
+  },
+  {
+    "position": "Technical Lead (NodeJS / Python)",
+    "work_mode": {
+      "mode": "onsite",
+      "on_site_days_per_week": 5,
+      "location": "Mexico City",
+      "salary": { "amount": 38000.0, "currency": "MXN", "period": "monthly" }
+    },
+    "job_type": ["Full-time"],
+    "technologies": {
+      "cloud": ["Google Cloud Platform"],
+      "programming_languages": [{ "name": "Node.js" }, { "name": "Python" }],
+      "databases": ["SQL", "NoSQL"],
+      "architectures": ["Microservices", "REST"],
+      "others": ["Artificial Intelligence", "Large Language Models"]
+    },
+    "experience_required": {
+      "minimum_years": 5,
+      "areas": ["Backend Development", "Technical Leadership"]
+    },
+    "skills": [
+      "Microservices",
+      "REST APIs",
+      "Artificial Intelligence",
+      "Large Language Models",
+      "GCP",
+      "Node.js",
+      "Python",
+      "Relational Databases",
+      "Non-Relational Databases",
+      "Team Leadership",
+      "Innovation"
+    ],
+    "foreign_languages": []
+  },
+  {
+    "position": "Python Developer",
+    "work_mode": {
+      "mode": "onsite",
+      "on_site_days_per_week": 5,
+      "salary": { "amount": 22000.0, "currency": "MXN", "period": "monthly" }
+    },
+    "job_type": ["Full-time"],
+    "technologies": {
+      "frameworks": ["FastAPI", "Django", "Django REST Framework"],
+      "programming_languages": [
+        { "name": "Python", "level": "advanced" },
+        { "name": "JavaScript" }
+      ],
+      "databases": ["SQL"],
+      "architectures": ["REST", "Client-Server"],
+      "others": [
+        "[Inferred]: Python level",
+        "[Inferred]: English proficiency level",
+        "Git",
+        "GitHub",
+        "Pytest",
+        "OOP",
+        "Data Structures",
+        "Command Line",
+        "Frontend Integration"
+      ]
+    },
+    "experience_required": {
+      "minimum_years": 1,
+      "areas": ["Python Development", "Backend Development"]
+    },
+    "skills": [
+      "Python",
+      "JavaScript",
+      "TypeScript",
+      "REST APIs",
+      "FastAPI",
+      "Django",
+      "Django REST Framework",
+      "Pytest",
+      "Git",
+      "GitHub",
+      "SQL",
+      "OOP",
+      "Data Structures",
+      "Client-Server",
+      "HTTP",
+      "Command Line",
+      "Frontend Integration"
+    ],
+    "foreign_languages": [
+      { "name": "English", "language_proficiency_level": "B1" }
+    ]
+  },
+  {
+    "position": "Python Developer",
+    "work_mode": {
+      "mode": "onsite",
+      "on_site_days_per_week": 5,
+      "salary": { "amount": 22000.0, "currency": "MXN", "period": "monthly" }
+    },
+    "job_type": ["Full-time"],
+    "technologies": {
+      "frameworks": ["FastAPI", "Django", "Django REST Framework"],
+      "programming_languages": [
+        { "name": "Python", "level": "advanced" },
+        { "name": "JavaScript" }
+      ],
+      "databases": ["SQL"],
+      "architectures": ["REST", "Client-Server"],
+      "others": [
+        "[Inferred]: Python level",
+        "[Inferred]: English proficiency level",
+        "Git",
+        "GitHub",
+        "Pytest",
+        "OOP",
+        "Data Structures",
+        "Command Line",
+        "Frontend Integration"
+      ]
+    },
+    "experience_required": {
+      "minimum_years": 1,
+      "areas": ["Python Development", "Backend Development"]
+    },
+    "skills": [
+      "Python",
+      "JavaScript",
+      "TypeScript",
+      "REST APIs",
+      "FastAPI",
+      "Django",
+      "Django REST Framework",
+      "Pytest",
+      "Git",
+      "GitHub",
+      "SQL",
+      "OOP",
+      "Data Structures",
+      "Client-Server",
+      "HTTP",
+      "Command Line",
+      "Frontend Integration"
+    ],
+    "foreign_languages": [
+      { "name": "English", "language_proficiency_level": "B1" }
+    ]
+  },
+  {
+    "position": "Fullstack Python Developer",
+    "work_mode": {
+      "mode": "onsite",
+      "on_site_days_per_week": 5,
+      "location": "Santa Fe, Mexico City",
+      "salary": { "amount": 30000.0, "currency": "MXN", "period": "monthly" }
+    },
+    "job_type": ["Full-time"],
+    "technologies": {
+      "cloud": ["AWS"],
+      "frameworks": [
+        "Django",
+        "React",
+        "Angular",
+        "Vue.js",
+        "Bootstrap",
+        "Tailwind CSS"
+      ],
+      "programming_languages": [
+        { "name": "Python", "level": "advanced" },
+        { "name": "JavaScript" }
+      ],
+      "architectures": ["REST", "GraphQL", "SPA"],
+      "others": [
+        "[Inferred]: Python level",
+        "Git",
+        "GitFlow",
+        "HTML5",
+        "CSS3",
+        "SASS",
+        "LESS",
+        "Media Queries",
+        "Async/Await",
+        "JWT",
+        "Responsive Design"
+      ]
+    },
+    "experience_required": {
+      "minimum_years": 5,
+      "areas": [
+        "Fullstack Development",
+        "Backend Development",
+        "Frontend Development"
+      ]
+    },
+    "skills": [
+      "Python",
+      "Django",
+      "AWS",
+      "JavaScript",
+      "React",
+      "Angular",
+      "Vue.js",
+      "REST APIs",
+      "GraphQL",
+      "Git",
+      "GitFlow",
+      "HTML5",
+      "CSS3",
+      "Bootstrap",
+      "Tailwind CSS",
+      "SPA",
+      "Authentication",
+      "Responsive Design",
+      "Communication",
+      "Leadership",
+      "Autonomy",
+      "Integrity",
+      "Order and Quality",
+      "Achievement Orientation"
+    ],
+    "foreign_languages": []
+  },
+  {
+    "position": "AI/ML Engineer",
+    "work_mode": {
+      "mode": "onsite",
+      "on_site_days_per_week": 5,
+      "salary": { "currency": "MXN" }
+    },
+    "job_type": ["full-time"],
+    "technologies": {
+      "frameworks": [
+        "HuggingFace Transformers",
+        "TRL",
+        "LoRA",
+        "QLoRA",
+        "Unsloth",
+        "DeepSpeed",
+        "FSDP",
+        "llama.cpp",
+        "Ollama",
+        "MLX"
+      ],
+      "programming_languages": [
+        {
+          "name": "Python",
+          "level": "advanced",
+          "libraries": [
+            "PyTorch",
+            "HuggingFace Transformers",
+            "TRL",
+            "LoRA",
+            "QLoRA",
+            "Unsloth",
+            "DeepSpeed",
+            "FSDP",
+            "MLX",
+            "llama.cpp",
+            "Ollama"
+          ]
+        },
+        { "name": "Java", "level": "intermediate", "libraries": [] }
+      ],
+      "databases": ["pgvector"],
+      "others": [
+        "[Inferred]: Java level intermediate",
+        "[Inferred]: English proficiency level B2"
+      ]
+    },
+    "experience_required": {
+      "minimum_years": 4,
+      "areas": ["Artificial Intelligence", "Machine Learning", "Backend"]
+    },
+    "skills": [
+      "Python",
+      "PyTorch",
+      "Transformers",
+      "Fine-tuning",
+      "LLM",
+      "RLHF",
+      "Quantization",
+      "RAG",
+      "pgvector",
+      "Linux",
+      "Spanish native"
+    ],
+    "foreign_languages": [
+      { "name": "Spanish", "language_proficiency_level": "native" },
+      { "name": "English", "language_proficiency_level": "B2" }
+    ]
+  },
+  {
+    "position": "Odoo Developer",
+    "work_mode": {
+      "mode": "onsite",
+      "on_site_days_per_week": 5,
+      "salary": { "currency": "MXN" }
+    },
+    "job_type": ["full-time"],
+    "technologies": {
+      "frameworks": ["Odoo"],
+      "programming_languages": [
+        { "name": "Python", "level": "intermediate", "libraries": [] }
+      ],
+      "databases": ["PostgreSQL"],
+      "others": ["REST APIs"]
+    },
+    "experience_required": {
+      "minimum_years": 2,
+      "areas": ["ERP", "Odoo Development", "Database Management"]
+    },
+    "skills": [
+      "Python",
+      "Odoo",
+      "PostgreSQL",
+      "API Integration",
+      "Problem-solving"
+    ],
+    "foreign_languages": []
+  },
+  {
+    "position": "Python Developer",
+    "work_mode": {
+      "mode": "hybrid",
+      "location": "Santa Fe, Mexico",
+      "salary": { "amount": 24000.0, "currency": "MXN", "period": "monthly" }
+    },
+    "job_type": ["full-time"],
+    "technologies": {
+      "frameworks": ["Django", "Flask", "FastAPI"],
+      "programming_languages": [
+        { "name": "Python", "level": "intermediate", "libraries": [] }
+      ],
+      "databases": ["MySQL", "PostgreSQL", "SQL Server"],
+      "architectures": ["REST"],
+      "others": ["Docker"]
+    },
+    "experience_required": {
+      "minimum_years": 2,
+      "areas": ["Backend", "API Development", "Database Management"]
+    },
+    "skills": [
+      "Python",
+      "Django",
+      "Flask",
+      "FastAPI",
+      "MySQL",
+      "PostgreSQL",
+      "SQL Server",
+      "REST APIs",
+      "Docker"
+    ],
+    "foreign_languages": []
+  },
+  {
+    "position": "Data Analyst",
+    "work_mode": {
+      "mode": "hybrid",
+      "location": "Tlalnepantla, Mexico",
+      "salary": { "amount": 18000.0, "currency": "MXN", "period": "monthly" }
+    },
+    "job_type": ["full-time"],
+    "technologies": {
+      "programming_languages": [
+        { "name": "Python", "level": "intermediate", "libraries": [] }
+      ],
+      "others": ["Power BI", "Excel", "Statistical models"]
+    },
+    "experience_required": {
+      "minimum_years": 2,
+      "areas": ["Data Analysis", "Call Center Management", "KPI Management"]
+    },
+    "skills": [
+      "Python",
+      "Power BI",
+      "Excel",
+      "Statistical Analysis",
+      "Data Visualization",
+      "Process Optimization"
+    ],
+    "foreign_languages": []
+  },
+  {
+    "position": "Full Stack Developer",
+    "work_mode": {
+      "mode": "onsite",
+      "on_site_days_per_week": 5,
+      "location": "Santa Fe, Mexico",
+      "salary": { "amount": 24999.0, "currency": "MXN", "period": "monthly" }
+    },
+    "job_type": ["full-time"],
+    "technologies": {
+      "frameworks": ["Django", "Angular"],
+      "programming_languages": [
+        { "name": "Python", "level": "intermediate", "libraries": [] },
+        { "name": "TypeScript", "level": "intermediate", "libraries": [] }
+      ],
+      "others": ["Agile", "SCRUM", "Unit testing", "Git repositories"]
+    },
+    "experience_required": {
+      "minimum_years": 2,
+      "areas": ["Web Development", "Full Stack Development"]
+    },
+    "skills": [
+      "Python",
+      "Django",
+      "Angular",
+      "TypeScript",
+      "Agile",
+      "SCRUM",
+      "Unit Testing"
+    ],
+    "foreign_languages": []
+  },
+  {
+    "position": "Junior Backend Developer",
+    "work_mode": {
+      "mode": "onsite",
+      "on_site_days_per_week": 5,
+      "salary": { "amount": 20000.0, "currency": "MXN", "period": "monthly" }
+    },
+    "job_type": ["Full-time"],
+    "technologies": {
+      "cloud": ["GCP", "BigQuery"],
+      "frameworks": ["FastAPI", ".NET"],
+      "programming_languages": [
+        { "name": "Python", "level": "intermediate" },
+        { "name": ".NET" }
+      ],
+      "databases": ["SQL", "MongoDB"],
+      "big_data": ["BigQuery"],
+      "architectures": ["REST"],
+      "others": [
+        "[Inferred]: Python level intermediate",
+        "[Inferred]: FastAPI level intermediate"
+      ]
+    },
+    "experience_required": {
+      "minimum_years": 2,
+      "areas": ["Backend Development"]
+    },
+    "skills": [
+      "Analytical thinking",
+      "Teamwork",
+      "Clear communication",
+      "Result-oriented",
+      "Clean code"
+    ],
+    "foreign_languages": [{ "name": "English" }]
+  },
+  {
+    "position": "Backend Intern",
+    "work_mode": { "mode": "remote", "on_site_days_per_week": 0 },
+    "job_type": ["Internship"],
+    "technologies": {
+      "frameworks": ["Django"],
+      "programming_languages": [{ "name": "Python" }],
+      "databases": ["MySQL"],
+      "others": ["Linux", "Git"]
+    },
+    "experience_required": {
+      "minimum_years": 1,
+      "areas": ["Backend Development"]
+    },
+    "skills": [
+      "Communication",
+      "Responsibility",
+      "Commitment",
+      "Autonomy",
+      "Frustration tolerance"
+    ],
+    "foreign_languages": [{ "name": "English" }]
+  },
+  {
+    "position": "AI Development Support",
+    "work_mode": {
+      "mode": "remote",
+      "on_site_days_per_week": 0,
+      "salary": { "amount": 10000.0, "currency": "MXN", "period": "monthly" }
+    },
+    "job_type": ["Part-time"],
+    "technologies": {
+      "programming_languages": [{ "name": "Python" }],
+      "databases": ["PostgreSQL"],
+      "others": ["Git", "Linux"]
+    },
+    "experience_required": { "minimum_years": 0, "areas": ["AI Development"] },
+    "skills": [],
+    "foreign_languages": [{ "name": "English" }]
+  },
+  {
+    "position": "Junior Web Developer",
+    "work_mode": { "mode": "onsite", "on_site_days_per_week": 5 },
+    "job_type": ["Full-time"],
+    "technologies": {
+      "frameworks": ["FastAPI", "Django"],
+      "programming_languages": [
+        { "name": "Python", "level": "intermediate" },
+        { "name": "JavaScript", "level": "beginner" }
+      ],
+      "databases": ["SQL"],
+      "others": ["HTML5", "CSS3", "Git", "GitHub", "Web Scraping"]
+    },
+    "experience_required": { "minimum_years": 2, "areas": ["Web Development"] },
+    "skills": ["Logical thinking", "Self-management", "Communication"],
+    "foreign_languages": []
+  },
+  {
+    "position": "Senior Developer",
+    "work_mode": {
+      "mode": "onsite",
+      "on_site_days_per_week": 5,
+      "location": "Culiacán, Sinaloa, Mexico"
+    },
+    "job_type": ["Full-time"],
+    "technologies": {
+      "programming_languages": [
+        { "name": "PHP" },
+        { "name": "Python" },
+        { "name": "Node.js" },
+        { "name": "JavaScript" }
+      ],
+      "databases": ["SQL"],
+      "others": [
+        "CRM",
+        "Google Suite",
+        "Microsoft Office",
+        "Windows",
+        "Linux",
+        "Cybersecurity",
+        "HTML",
+        "CSS"
+      ]
+    },
+    "experience_required": {
+      "minimum_years": 5,
+      "areas": ["Full Stack Development", "Technology Management"]
+    },
+    "skills": [
+      "Results-oriented",
+      "Analytical thinking",
+      "Leadership",
+      "Effective communication",
+      "Service orientation",
+      "Teamwork"
+    ],
+    "foreign_languages": [
+      { "name": "English", "language_proficiency_level": "B1" }
+    ]
+  }
+]

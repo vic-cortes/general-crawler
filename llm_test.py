@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from dotenv import load_dotenv
 
-from config import DATA_PATH, Config
+from config import DATA_PATH, Config, PROCESS_DATA_PATH
 
 load_dotenv()
 
@@ -16,11 +16,16 @@ client = OpenAI(
     base_url="https://api.deepseek.com",
 )
 
+OFFER_WEB_NAME = "compu_trabajo"
+FILE_NAME = f"{OFFER_WEB_NAME}_job_offers_20260523_10_00"
+
 # load computrabajo files
-file = DATA_PATH / "occ_job_offers_20260501_09_00.json"
+file = DATA_PATH / f"{FILE_NAME}.json"
 
 with open(file, "r", encoding="utf-8") as f:
     data = json.load(f)
+    # limit to first 20 for testing
+    data = data[:20]
 
 
 class ExperienceSchema(BaseModel):
@@ -78,17 +83,17 @@ class JobOfferSchema(BaseModel):
     foreign_languages: List[LanguageSchema]
 
 
-def parse_llm_response_to_json(response_content: str) -> JobOfferSchema | dict:
-    """Parse the LLM response content to a JSON dictionary."""
+def parse_llm_response_to_json(response_content: str) -> List[JobOfferSchema]:
+    """Parse the LLM response (JSON array) into a list of JobOfferSchema."""
     try:
-        # Clean the response content
-        cleaned_content = response_content.replace("```json\n", "").rstrip("```\n")
-        # Parse the cleaned content to a JSON object
+        cleaned_content = (
+            response_content.strip().removeprefix("```json").removesuffix("```").strip()
+        )
         json_data = json.loads(cleaned_content)
-        return JobOfferSchema.model_validate(json_data)
-    except json.JSONDecodeError as e:
+        return [JobOfferSchema.model_validate(item) for item in json_data]
+    except Exception as e:
         print("Error decoding JSON:", e)
-        return {}
+        return []
 
 
 class DetailsSchema(BaseModel):
@@ -96,6 +101,7 @@ class DetailsSchema(BaseModel):
     requirements: str | None = None
     salary: str | None = None
     time: str | None = None
+    place: str | None = None
 
 
 class ScrapedJobOfferSchema(BaseModel):
@@ -106,15 +112,27 @@ class ScrapedJobOfferSchema(BaseModel):
     details: DetailsSchema
 
 
-def job_template(job: ScrapedJobOfferSchema) -> str:
+BATCH_SIZE = 5
+
+
+def jobs_template(jobs: List[ScrapedJobOfferSchema]) -> str:
     schema = JobOfferSchema.model_json_schema()
+
+    jobs_input = "\n\n".join(
+        f"### Job {i + 1}\n"
+        f"- **Description:** {job.details.description}\n"
+        f"- **Requirements:** {job.details.requirements}\n"
+        f"- **Metadata:** Salary: {job.details.salary or "<Not specified>"},"
+        f" time: {job.details.time or "<Not specified>"}, mode: {job.details.place or "<Not specified>"}\n"
+        for i, job in enumerate(jobs)
+    )
 
     return f"""
         ### Role
-        Act as a precise IT Recruitment Data Analyst. Your goal is to parse job descriptions into a structured JSON that adheres strictly to a provided Pydantic schema.
+        Act as a precise IT Recruitment Data Analyst. Your goal is to parse job descriptions into structured JSON objects that adhere strictly to a provided Pydantic schema.
 
         ### Strict Constraints
-        1. **Output Format:** Return ONLY the raw JSON string. No markdown blocks, no "Here is your JSON", no explanations.
+        1. **Output Format:** Return ONLY a raw JSON array with exactly {len(jobs)} objects — one per job, in the same order. No markdown blocks, no explanations.
         2. **Language:** Translate all extracted text values to **English**, except for proper technology names.
         3. **Data Integrity:**
             - **Enums:** You MUST use only the values defined in the schema (e.g., `WorkMode` must be exactly "remote", "onsite", or "hybrid").
@@ -123,45 +141,35 @@ def job_template(job: ScrapedJobOfferSchema) -> str:
         4. **Noise Filtering:** Ignore company history, perks (coffee, gym), and non-technical marketing text.
 
         ### Inference & Nulls
-        - If a field is missing (e.g., salary amount), attempt to infer it from context.
-        - If inferred, add a clear note in the `others` array under `technologies` or a relevant `skills` entry stating: "[Inferred]: field_name".
+        - If a field is missing, attempt to infer it from context.
+        - If inferred, add a note in the `others` array under `technologies` stating: "[Inferred]: field_name".
         - If a field is not present and cannot be inferred, set it to `null`.
         - For `on_site_days_per_week`, if the mode is "remote", set to 0. If "onsite", set to 5.
 
-        ### Input Data
-        - **Description:** {job.details.description}
-        - **Requirements:** {job.details.requirements}
-        - **Metadata:** {job.details.salary}
+        ### Input Jobs
+        {jobs_input}
 
-        ### Target Schema (JSON Schema)
+        ### Target Schema (apply to each object in the array)
         {schema}
     """
 
 
-# Create and empty file and write each resulting JSON on a new line
+OUTPUT_FILE = PROCESS_DATA_PATH / f"{FILE_NAME}_llm_parsed.jsonl"
 
-for job in data:
-    current_job = ScrapedJobOfferSchema.model_validate(job)
-    job_prompt = job_template(current_job)
+with open(OUTPUT_FILE, "a", encoding="utf-8") as out_file:
+    for batch_start in range(0, len(data), BATCH_SIZE):
+        batch = data[batch_start : batch_start + BATCH_SIZE]
+        current_jobs = [ScrapedJobOfferSchema.model_validate(job) for job in batch]
 
-    response = client.chat.completions.create(
-        model="deepseek-v4-flash",
-        messages=[
-            {
-                "role": "user",
-                "content": job_prompt,
-            },
-        ],
-    )
-    parsed_data = parse_llm_response_to_json(response.choices[0].message.content)
-    final_data = (
-        parsed_data.model_dump_json(exclude_none=True)
-        if isinstance(parsed_data, JobOfferSchema)
-        else {}
-    )
-    print("\n" + final_data)
+        response = client.chat.completions.create(
+            model="deepseek-v4-flash",
+            messages=[{"role": "user", "content": jobs_template(current_jobs)}],
+        )
 
-    with open("occ_job_offers_llm_parsed.jsonl", "a", encoding="utf-8") as f:
-        f.write(final_data + "\n")
+        parsed_batch = parse_llm_response_to_json(response.choices[0].message.content)
 
-    job["llm_parsed"] = final_data
+        for i, parsed in enumerate(parsed_batch):
+            final_data = parsed.model_dump_json(exclude_none=True)
+            print("\n" + final_data)
+            out_file.write(final_data + "\n")
+            batch[i]["llm_parsed"] = final_data
