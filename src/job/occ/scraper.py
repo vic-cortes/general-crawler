@@ -73,71 +73,63 @@ class OCCScraper(BaseScraper):
             ],
         }
 
-    def _get_salary(self) -> str | None:
-        """Extract the salary information from the job details."""
-        for span in self.box_detail.find_all("span"):
-            if span.attrs and "i_money" in span.attrs.get("class", []):
-                return span.parent.text.strip()
-
     def _get_description(self) -> str | None:
-        """Extract the job description from the job details."""
         DESCRIPTION = "descripción"
         all_ps = self.box_detail.find_all("p")
-
         description_tag = [el for el in all_ps if DESCRIPTION in el.text.lower()]
-
         if not description_tag:
             return None
-
-        description_tag = description_tag[0]
-        return description_tag.parent.text.strip()
+        return description_tag[0].parent.text.strip()
 
     def _get_offer_id(self, soup: BeautifulSoup) -> str | None:
-        """Extract the job ID from the job details."""
         JOB_ID = "id:"
         all_ps = self.box_detail.find_all("p")
-
         job_id_tag = [el for el in all_ps if JOB_ID in el.text.lower()]
-
         if not job_id_tag:
             return None
-
         return job_id_tag[0].text.split()[-1]
 
     def _get_requirements(self) -> str | None:
-        """Extract the job requirements from the job details."""
         REQUIREMENTS = "requisitos"
         all_ps = self.box_detail.find_all("p")
-
         requirements_tag = [el for el in all_ps if REQUIREMENTS in el.text.lower()]
-
         if not requirements_tag:
             return None
-
-        requirements_tag = requirements_tag[0].find_next_sibling()
-        return requirements_tag.text
+        return requirements_tag[0].find_next_sibling().text
 
     def get_job_details(self, soup: BeautifulSoup) -> dict:
-        """Extract job details from the job description page."""
         DETAIL_SELECTOR = "job-detail-container"
-        job_url = None
-
         self.box_detail = soup.find(id=DETAIL_SELECTOR)
 
-        salary = self._get_salary()
-        description = self._get_description()
         job_id = self._get_offer_id(soup)
-        requirements = self._get_requirements()
-
-        if job_id:
-            job_url = f"{BASE_URL}/empleo/oferta/{job_id}/"
+        job_url = f"{BASE_URL}/empleo/oferta/{job_id}/" if job_id else None
 
         dict_data = {
-            "description": description,
+            "description": self._get_description(),
             "job_url": job_url,
-            "salary": salary,
-            "requirements": requirements,
+            "salary": None,
+            "requirements": self._get_requirements(),
+            "location": None,
+            "time": None,
+            "place": None,
         }
+
+        LOCATION_KEYWORD_SPAN = "line-clamp-1"
+
+        for span in self.box_detail.find_all("span"):
+
+            if LOCATION_KEYWORD_SPAN in span.get("class"):
+                _, location = span.text.split("en")
+                dict_data["location"] = location.strip()
+                continue
+
+            if not span.attrs:
+                continue
+            span_class = "__".join(span.attrs.get("class", []))
+            for icon_class, key in DETAIL_ICONS.items():
+                if icon_class in span_class:
+                    dict_data[key] = span.parent.text.strip()
+                    break
 
         return dict_data
 
@@ -184,4 +176,4 @@ async def main_scraper(max_pages: int = 100, max_concurrent_browsers: int = 3):
 
 if __name__ == "__main__":
     # Run with default settings: max 100 pages, max 3 concurrent browsers
-    asyncio.run(main_scraper(max_pages=50, max_concurrent_browsers=5))
+    asyncio.run(main_scraper(max_pages=50, max_concurrent_browsers=1))
